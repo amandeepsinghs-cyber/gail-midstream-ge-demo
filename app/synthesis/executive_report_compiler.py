@@ -39,6 +39,9 @@ class ExecutiveReportCompiler:
         return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAAEs"
 
     def _get_gail_emblem(self) -> str:
+        gail_file = self.fixtures_dir / "gail_logo_base64.txt"
+        if gail_file.exists():
+            return gail_file.read_text().strip()
         emblem_file = self.fixtures_dir / "ppac_emblem_base64.txt"
         if emblem_file.exists():
             return emblem_file.read_text().strip()
