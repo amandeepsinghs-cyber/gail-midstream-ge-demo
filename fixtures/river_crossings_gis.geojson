@@ -1,0 +1,119 @@
+{
+  "type": "FeatureCollection",
+  "metadata": {
+    "network": "GAIL National Gas Grid - HVJ Trunkline",
+    "total_km": 18700,
+    "generated_for": "Act 1: Spatial GIS & Weather Overlay"
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "PIPE-HVJ-01",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            72.7311,
+            21.1702
+          ],
+          [
+            75.8577,
+            22.7196
+          ],
+          [
+            77.2941,
+            24.1627
+          ],
+          [
+            77.3412,
+            28.2711
+          ],
+          [
+            77.5539,
+            28.5516
+          ],
+          [
+            77.0315,
+            28.7912
+          ],
+          [
+            76.8512,
+            29.3909
+          ]
+        ]
+      },
+      "properties": {
+        "name": "Hazira-Vijaipur-Jagdishpur (HVJ) Trunkline",
+        "diameter_inches": 36,
+        "design_pressure_kg_cm2": 85.0,
+        "operating_status": "NORMAL_TRANSMISSION"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "STN-VIJAIPUR",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.2941,
+          24.1627
+        ]
+      },
+      "properties": {
+        "name": "Vijaipur Compressor Hub",
+        "station_type": "PRIMARY_COMPRESSION_HUB",
+        "active_turbines": 8,
+        "siemens_gt_units": [
+          "GT-01",
+          "GT-02",
+          "GT-03",
+          "GT-04"
+        ],
+        "current_throughput_mmscmd": 48.5,
+        "status": "OPERATIONAL"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "STN-CHHAINSA",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.3412,
+          28.2711
+        ]
+      },
+      "properties": {
+        "name": "Chhainsa Compressor Station",
+        "station_type": "SECONDARY_PRESSURE_BOOST",
+        "current_linepack_kg_cm2": 81.47,
+        "siemens_gt_units": [
+          "GT-CH-1",
+          "GT-CH-2"
+        ],
+        "status": "OPERATIONAL"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "RISK-YAMUNA-CROSSING",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.0315,
+          28.7912
+        ]
+      },
+      "properties": {
+        "name": "Gauna-Bawana Yamuna River Crossing",
+        "asset_class": "SUBMERGED_PIPELINE_CROSSING",
+        "environmental_alert": "HIGH_RISK_FLASH_FLOOD_WARNING",
+        "river_gauge_level_m": 206.4,
+        "danger_mark_m": 205.33,
+        "imd_rainfall_alert": "HEAVY_TO_VERY_HEAVY (115.6mm)",
+        "scada_hydraulic_stress": "ELEVATED_VIBRATION_ALERT",
+        "incident_reference": "Preemptive monitoring post Gauna-Bawana Yamuna flash flood breach"
+      }
+    }
+  ]
+}

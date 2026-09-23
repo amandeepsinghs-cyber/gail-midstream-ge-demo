@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GAIL National Gas Grid | Gemini Enterprise Agentic Demo Console</title>
+<!-- Leaflet & Vega Libraries -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+
+<style>
+    :root {
+        --primary: #1a73e8;
+        --primary-dark: #1557b0;
+        --danger: #d93025;
+        --success: #188038;
+        --warning: #f29900;
+        --bg-main: #0d1117;
+        --bg-card: #161b22;
+        --bg-card-hover: #21262d;
+        --border-color: #30363d;
+        --text-primary: #f0f6fc;
+        --text-secondary: #8b949e;
+        --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: var(--bg-main);
+        color: var(--text-primary);
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    header {
+        background: #010409;
+        border-bottom: 1px solid var(--border-color);
+        padding: 12px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+    }
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+    .brand h1 {
+        font-size: 18px;
+        margin: 0;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        color: #58a6ff;
+    }
+    .badge-chip {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        background: rgba(88, 166, 255, 0.15);
+        color: #58a6ff;
+        border: 1px solid rgba(88, 166, 255, 0.3);
+    }
+    .main-grid {
+        display: grid;
+        grid-template-columns: 380px 1fr 420px;
+        flex: 1;
+        overflow: hidden;
+    }
+    .sidebar {
+        background: var(--bg-card);
+        border-right: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        padding: 16px;
+    }
+    .section-title {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-secondary);
+        font-weight: 700;
+        margin-bottom: 12px;
+    }
+    .act-btn {
+        background: #21262d;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin-bottom: 10px;
+        text-align: left;
+        cursor: pointer;
+        transition: all 0.15s ease-in-out;
+        color: var(--text-primary);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .act-btn:hover {
+        background: #30363d;
+        border-color: #58a6ff;
+    }
+    .act-btn.active {
+        background: rgba(88, 166, 255, 0.15);
+        border-color: #58a6ff;
+    }
+    .act-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        color: #58a6ff;
+        font-weight: 700;
+    }
+    .act-title {
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .act-desc {
+        font-size: 11px;
+        color: var(--text-secondary);
+        line-height: 1.4;
+    }
+    .center-stage {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: #090d13;
+    }
+    #map-container {
+        height: 50%;
+        border-bottom: 1px solid var(--border-color);
+        position: relative;
+    }
+    #chart-container {
+        height: 50%;
+        padding: 16px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    .right-pane {
+        background: var(--bg-card);
+        border-left: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .pane-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 13px;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .chat-log {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+    .bubble {
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        line-height: 1.5;
+        max-width: 95%;
+    }
+    .bubble.user {
+        background: #1f6feb;
+        color: white;
+        align-self: flex-end;
+    }
+    .bubble.agent {
+        background: #21262d;
+        color: #e6edf3;
+        border: 1px solid var(--border-color);
+        align-self: flex-start;
+    }
+    .bubble .act-badge {
+        font-size: 10px;
+        font-weight: 700;
+        color: #58a6ff;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+    }
+    .input-box {
+        padding: 12px 16px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        gap: 8px;
+        background: #0d1117;
+    }
+    .input-box input {
+        flex: 1;
+        background: #161b22;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        padding: 8px 12px;
+        color: white;
+        font-size: 13px;
+    }
+    .input-box input:focus {
+        outline: none;
+        border-color: #58a6ff;
+    }
+    .input-box button {
+        background: #238636;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 16px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .pulse-marker {
+        width: 14px;
+        height: 14px;
+        background: #ea4335;
+        border-radius: 50%;
+        box-shadow: 0 0 0 rgba(234, 67, 53, 0.4);
+        animation: pulse 1.6s infinite;
+    }
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(234, 67, 53, 0.7); }
+        70% { box-shadow: 0 0 0 16px rgba(234, 67, 53, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(234, 67, 53, 0); }
+    }
+</style>
+</head>
+<body>
+
+<header>
+    <div class="brand">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#58a6ff" stroke-width="2"/><path d="M12 6v12M6 12h12" stroke="#58a6ff" stroke-width="2"/></svg>
+        <div>
+            <h1>GAIL (India) Limited | National Gas Management Centre</h1>
+            <div style="font-size: 11px; color: var(--text-secondary);">Autonomous Pipeline Grid, Predictive Analytics & Executive Advisory Agent</div>
+        </div>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <span class="badge-chip">Gemini Enterprise ADK</span>
+        <span class="badge-chip" style="color: #3fb950; border-color: rgba(63,185,80,0.3); background: rgba(63,185,80,0.15);">Grid Status: Online (18,700 km)</span>
+    </div>
+</header>
+
+<div class="main-grid">
+    <!-- LEFT: ACT SELECTOR -->
+    <div class="sidebar">
+        <div class="section-title">5-Act Demonstration Sequence</div>
+        
+        <div class="act-btn" onclick="runAct(1)">
+            <div class="act-header"><span>ACT 1</span><span>SPATIAL GIS</span></div>
+            <div class="act-title">Maps & Weather Layer</div>
+            <div class="act-desc">Grid integrity audit & IMD Yamuna flash-flood risk overlay.</div>
+        </div>
+
+        <div class="act-btn" onclick="runAct(2)">
+            <div class="act-header"><span>ACT 2</span><span>OT TELEMETRY</span></div>
+            <div class="act-title">SCADA & Siemens RDS Feeds</div>
+            <div class="act-desc">Chhainsa station 72h linepack & turbine exhaust temps.</div>
+        </div>
+
+        <div class="act-btn" onclick="runAct(3)">
+            <div class="act-header"><span>ACT 3</span><span>PREDICTIVE AI</span></div>
+            <div class="act-title">SARIMAX Forecast & Setpoint</div>
+            <div class="act-desc">Linepack deficit at T+14h; +3.8% Vijaipur setpoint saving ₹16.8 Cr/yr.</div>
+        </div>
+
+        <div class="act-btn" onclick="runAct(4)">
+            <div class="act-header"><span>ACT 4</span><span>SYNTHESIS</span></div>
+            <div class="act-title">Executive Briefing Report</div>
+            <div class="act-desc">Autonomous multi-source HTML/PDF briefing generation.</div>
+        </div>
+
+        <div class="act-btn" onclick="runAct(5)">
+            <div class="act-header"><span>ACT 5</span><span>CLOSED-LOOP</span></div>
+            <div class="act-title">RISE with SAP & AI Tarang</div>
+            <div class="act-desc">PM work order creation & natural language Q&A.</div>
+        </div>
+
+        <div style="margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border-color); font-size: 11px; color: var(--text-secondary);">
+            <strong>Project Alignments:</strong><br>
+            • Project Sanchay (₹600 Cr NPV)<br>
+            • Project Navodaya (RISE with SAP)<br>
+            • GAIL AI Tarang (5,000+ staff)
+        </div>
+    </div>
+
+    <!-- CENTER: VISUAL STAGE (MAP & CHARTS) -->
+    <div class="center-stage">
+        <div id="map-container"></div>
+        <div id="chart-container">
+            <div id="vega-chart" style="width: 100%;"></div>
+            <div id="empty-chart-msg" style="color: var(--text-secondary); font-size: 13px;">Select Act 2 or 3 to render Vega-Lite telemetry & forecast charts.</div>
+        </div>
+    </div>
+
+    <!-- RIGHT: CONVERSATIONAL LOG & INPUT -->
+    <div class="right-pane">
+        <div class="pane-header">
+            <span>Agent Interaction Console</span>
+            <button onclick="window.open('/api/v1/report/latest', '_blank')" style="background: none; border: 1px solid #58a6ff; color: #58a6ff; border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer;">Open Executive PDF</button>
+        </div>
+        <div class="chat-log" id="chat-log">
+            <div class="bubble agent">
+                <div class="act-badge">SYSTEM INITIALIZATION</div>
+                Welcome to Gemini Enterprise for GAIL (India) Limited. Select any Act on the left or type a natural language operational question below.
+            </div>
+        </div>
+        <div class="input-box">
+            <input type="text" id="user-input" placeholder="Ask about transmission, linepack, or setpoints..." onkeydown="if(event.key==='Enter') sendCustomPrompt()">
+            <button onclick="sendCustomPrompt()">Send</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initialize Leaflet Map
+    const map = L.map('map-container').setView([24.5, 76.5], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '© OpenStreetMap | GAIL GIS Layer'
+    }).addTo(map);
+
+    // Pre-load HVJ corridor coordinates
+    const hvjCoords = [
+        [21.1702, 72.7311],  // Hazira
+        [22.7196, 75.8577],  // Indore
+        [24.1627, 77.2941],  // Vijaipur
+        [28.2711, 77.3412],  // Chhainsa
+        [28.5516, 77.5539],  // Dadri
+        [28.7912, 77.0315]   // Bawana
+    ];
+
+    const pipelineLine = L.polyline(hvjCoords, {
+        color: '#1a73e8',
+        weight: 4,
+        opacity: 0.85,
+        dashArray: '8, 8'
+    }).addTo(map);
+
+    // Add Key Station Markers
+    L.marker([24.1627, 77.2941]).addTo(map).bindPopup("<b>Vijaipur Compressor Hub</b><br>Throughput: 48.5 MMSCMD<br>8 Active Gas Turbines");
+    L.marker([28.2711, 77.3412]).addTo(map).bindPopup("<b>Chhainsa Compressor Station</b><br>Linepack: 81.47 kg/cm²");
+
+    // Add River Flood Alert Pin (Pulsing)
+    const floodIcon = L.divIcon({
+        className: 'custom-flood-pin',
+        html: '<div class="pulse-marker"></div>',
+        iconSize: [14, 14]
+    });
+    const floodMarker = L.marker([28.7912, 77.0315], {icon: floodIcon}).addTo(map)
+        .bindPopup("<b style='color:#d93025;'>CRITICAL HAZARD: Gauna-Bawana River Crossing</b><br>River Level: 206.40m (Danger: 205.33m)<br>115.6mm Rainfall | Acoustic Vibration Alert");
+
+    const ACT_PROMPTS = {
+        1: "Gemini, initialize a grid health and risk audit across the HVJ and MNJPL pipeline corridors for the next 24 hours.",
+        2: "Access live telemetry for Chhainsa Compressor Station and plot 72-hour historical trends for line-pack pressure, gas flow rate, and Siemens turbine exhaust temperatures.",
+        3: "Execute a 24-hour predictive SARIMAX demand forecast for Chhainsa station considering downstream fertilizer plant off-takes, and calculate optimal compressor setpoints at Vijaipur.",
+        4: "Compile this grid audit, weather assessment, SARIMAX forecast, and fuel-saving calculations into an official Daily Line-Pack & Integrity Executive Briefing.",
+        5: "Log this optimization advisory and stage a preventive work order directly into RISE with SAP S/4HANA Cloud."
+    };
+
+    async function runAct(actNum) {
+        const prompt = ACT_PROMPTS[actNum];
+        appendUserMsg(prompt);
+        
+        try {
+            const res = await fetch('/api/v1/prompt', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({prompt})
+            });
+            const data = await res.json();
+            appendAgentMsg(data.act, data.narrative);
+
+            // Trigger Visual Updates
+            if (actNum === 1) {
+                map.flyTo([28.7912, 77.0315], 9, {duration: 1.5});
+                setTimeout(() => floodMarker.openPopup(), 1600);
+            } else if (actNum === 2 && data.a2ui_card && data.a2ui_card.vega_lite_spec) {
+                renderVegaChart(data.a2ui_card.vega_lite_spec);
+            } else if (actNum === 3 && data.a2ui_card && data.a2ui_card.vega_lite_spec) {
+                renderVegaChart(data.a2ui_card.vega_lite_spec);
+            } else if (actNum === 4) {
+                appendAgentMsg("EXECUTIVE ARTIFACT", "Compiled official publication: <a href='/api/v1/report/latest' target='_blank' style='color:#58a6ff;'>Open GAIL Daily Line-Pack Briefing</a>");
+            }
+        } catch (e) {
+            appendAgentMsg("ERROR", "Failed to contact agent backend: " + e.message);
+        }
+    }
+
+    async function sendCustomPrompt() {
+        const input = document.getElementById('user-input');
+        const prompt = input.value.trim();
+        if (!prompt) return;
+        input.value = '';
+        appendUserMsg(prompt);
+
+        try {
+            const res = await fetch('/api/v1/prompt', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({prompt})
+            });
+            const data = await res.json();
+            appendAgentMsg(data.act || "GAIL AI TARANG", data.narrative);
+        } catch(e) {
+            appendAgentMsg("ERROR", "Execution error: " + e.message);
+        }
+    }
+
+    function renderVegaChart(spec) {
+        document.getElementById('empty-chart-msg').style.display = 'none';
+        spec.background = "transparent";
+        spec.config = {
+            view: {stroke: "transparent"},
+            axis: {labelColor: "#8b949e", titleColor: "#c9d1d9", gridColor: "#21262d"},
+            legend: {labelColor: "#c9d1d9", titleColor: "#c9d1d9"}
+        };
+        vegaEmbed('#vega-chart', spec, {actions: false});
+    }
+
+    function appendUserMsg(text) {
+        const log = document.getElementById('chat-log');
+        const b = document.createElement('div');
+        b.className = 'bubble user';
+        b.innerText = text;
+        log.appendChild(b);
+        log.scrollTop = log.scrollHeight;
+    }
+
+    function appendAgentMsg(act, text) {
+        const log = document.getElementById('chat-log');
+        const b = document.createElement('div');
+        b.className = 'bubble agent';
+        b.innerHTML = `<div class="act-badge">${act}</div>${text}`;
+        log.appendChild(b);
+        log.scrollTop = log.scrollHeight;
+    }
+</script>
+</body>
+</html>

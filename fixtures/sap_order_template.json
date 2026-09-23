@@ -1,0 +1,11 @@
+{
+  "system": "RISE with SAP S/4HANA Cloud (Project Navodaya)",
+  "maintenance_notification_type": "M2 - Breakdown/Preventive Calibration",
+  "plant": "1102 - GAIL Vijaipur Compressor Station",
+  "work_center": "MECH-COMP-01",
+  "order_type": "PM01 - Preventive Maintenance",
+  "default_priority": "2 - High",
+  "default_activity_type": "CALIB",
+  "gl_account": "0000421000 - Plant Maintenance Expenses",
+  "cost_center": "GAIL-VIJ-OPS"
+}

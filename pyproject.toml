@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gail-pipeline-agent"
+version = "0.1.0"
+description = "GAIL Autonomous Pipeline Grid, Predictive Analytics & Executive Advisory Agent"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Oil & Gas Agentic Ecosystem", email = "gail-agent@og-agentic-ecosystem.iam.gserviceaccount.com" }
+]
+dependencies = [
+    "pydantic>=2.7.0",
+    "pandas>=2.2.0",
+    "numpy>=1.26.0",
+    "statsmodels>=0.14.0",
+    "jinja2>=3.1.3",
+    "fastapi>=0.111.0",
+    "uvicorn>=0.30.0",
+    "pytest>=8.0.0",
+    "httpx>=0.27.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning"
+]

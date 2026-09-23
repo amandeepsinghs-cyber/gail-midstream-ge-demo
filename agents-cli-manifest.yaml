@@ -1,0 +1,45 @@
+schema_version: "1.0.0"
+agent_id: "GAIL-GRID-ADVISOR"
+display_name: "GAIL Autonomous Pipeline Grid & Executive Advisory Agent"
+persona: "Gas_Grid_Controller"
+organization: "GAIL (India) Limited"
+governing_project: "og-agentic-ecosystem"
+primary_region: "asia-south1"
+
+runtime:
+  target: "cloud_run"
+  service_account: "gail-grid-agent@og-agentic-ecosystem.iam.gserviceaccount.com"
+  port: 8080
+  min_instances: 1
+  max_instances: 5
+  cpu: "2"
+  memory: "4Gi"
+
+interfaces:
+  a2a_endpoint: "/a2a/gail_grid_advisor"
+  agent_card_url: "/a2a/gail_grid_advisor/.well-known/agent-card.json"
+  a2ui_version: "v0.9"
+
+gcs_scope:
+  bucket: "og-agentic-gail-data-asia-south1"
+  read_prefixes:
+    - "SCADA Telemetry/"
+    - "Siemens RDS Logs/"
+    - "IMD Weather Feeds/"
+  write_prefixes:
+    - "Executive Briefings/"
+    - "Optimized Setpoint Advisories/"
+
+skills:
+  - id: "audit_grid_and_weather_risk"
+    description: "Initializes GIS spatial grid health audit and overlays real-time IMD flood layers."
+  - id: "query_scada_telemetry"
+    description: "Queries Yokogawa SCADA and Siemens RDS turbine telemetry."
+  - id: "run_sarimax_linepack_forecast"
+    description: "Runs 24h SARIMAX predictive demand model with customer nominations and setpoints."
+  - id: "compile_executive_briefing"
+    description: "Compiles multi-source executive HTML/PDF briefing report."
+  - id: "stage_sap_maintenance_order"
+    description: "Creates preventive maintenance work orders in RISE with SAP S/4HANA Cloud."
+  - id: "query_enterprise_knowledge"
+    description: "Provides natural language Q&A for GAIL AI Tarang enterprise knowledge."
