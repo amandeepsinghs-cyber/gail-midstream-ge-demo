@@ -1,7 +1,7 @@
 # System Design Document (SDD)
 ## GAIL Autonomous Pipeline Grid, Predictive Analytics & Executive Advisory Agent
-### Document ID: `SDD-GAIL-GRID-ADVISOR-V1.0`
-**Status:** Approved Architecture | **Target Runtime:** Google Cloud Agent Runtime / Cloud Run  
+### Document ID: `SDD-GAIL-GRID-ADVISOR-V2.0`
+**Status:** Approved Sovereign Architecture | **Target Runtime:** Google Gemini Enterprise / Cloud Run  
 **Author:** Oil & Gas Enterprise Agentic Ecosystem | **Governing Entity:** GAIL (India) Limited
 
 ---
@@ -26,10 +26,11 @@ The agent functions as a real-time autonomous operational partner connecting phy
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                                  GAIL AGENT OT/IT CONVERGENCE TOPOLOGY                                      │
 ├───────────────────────────────┬───────────────────────────────┬─────────────────────────────────────────────┤
-│ 1. OT SENSOR TELEMETRY        │ 2. METEOROLOGICAL RADAR       │ 3. ENTERPRISE IT & ERP                      │
-│ • Yokogawa FAST/TOOLS SCADA   │ • IMD Doppler Weather Radar   │ • RISE with SAP S/4HANA (Project Navodaya)  │
-│   (Chhainsa & Vijaipur hubs)  │ • River Catchment Gauges      │ • Customer Nominations (HURL, NFL, CGD)     │
-│ • Siemens RDS Gas Turbines    │ • Gauna-Bawana Yamuna Warning │ • GAIL BRSR & ESG Disclosures               │
+│ 1. OT SENSOR TELEMETRY        │ 2. AI METEOROLOGICAL ENGINE   │ 3. ENTERPRISE IT & ERP                      │
+│ • Yokogawa FAST/TOOLS SCADA   │ • Google DeepMind WeatherNext │ • RISE with SAP S/4HANA (Project Navodaya)  │
+│   (Chhainsa & Vijaipur hubs)  │   (0.05° Station Ensemble)    │ • Customer Nominations (HURL, NFL, CGD)     │
+│ • Siemens RDS Gas Turbines    │ • Hydrological Gauges (Yamuna)│ • GAIL BRSR & ESG Disclosures               │
+│ • Submerged Acoustic Scour    │ • IMD Doppler Weather Radar   │ • GCS Medallion Data Lake                   │
 └───────────────┬───────────────┴───────────────┬───────────────┴──────────────────────┬──────────────────────┘
                 │                               │                                      │
                 ▼                               ▼                                      ▼
@@ -37,16 +38,16 @@ The agent functions as a real-time autonomous operational partner connecting phy
 │                                     GEMINI ENTERPRISE AGENT ORCHESTRATOR                                    │
 │                                           (Google ADK / Python 3.11)                                        │
 ├─────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ • Multivariate SARIMAX Engine (s=24 diurnal seasonality, exogenous nominations & ambient heatwave)          │
-│ • Transient Hydraulic Transit Delay Estimator (350 km Vijaipur -> Chhainsa wave propagation)                │
-│ • A2UI v0.9 Vega-Lite Component Renderer (Spatial GIS corridors, telemetry charts, confidence bands)        │
-│ • Multi-Source Executive Briefing HTML/PDF Synthesis Compiler                                               │
+│ • Multivariate Econometric SARIMAX Engine (s=24 diurnal seasonality, AIC grid search, MAPE backtest)       │
+│ • Transient Hydraulic Transit Delay Estimator (380 km Vijaipur -> Chhainsa wave propagation @ 35 km/h)     │
+│ • A2UI v0.9 Vega-Lite Component Renderer (Spatial GIS corridors, WeatherNext cards, confidence bands)       │
+│ • Sovereign Multi-Source Executive Briefing HTML/PDF Synthesis Compiler                                     │
 └──────────────────────────────────────────────────────┬──────────────────────────────────────────────────────┘
                                                        │
-                               ▼                       ▼                       ▼
+                                ▼                       ▼                       ▼
                      ┌───────────────────┬───────────────────────────┬───────────────────┐
-                     │ A2A Endpoint      │ Executive HTML Briefing   │ SAP Work Order    │
-                     │ JSON-RPC 0.3/1.0  │ 4-Source PDF Deliverable  │ PM01 Notification │
+                     │ A2A & A2UI Card   │ Sovereign Executive Brief │ SAP Work Order    │
+                     │ Gemini Enterprise │ PPAC-Grade HTML/PDF       │ PM01 Notification │
                      └───────────────────┴───────────────────────────┴───────────────────┘
 ```
 
@@ -54,60 +55,47 @@ The agent functions as a real-time autonomous operational partner connecting phy
 
 ## 3. Mathematical & Data Science Foundations
 
-### 3.1 SARIMAX Line-Pack Formulation
+### 3.1 PPAC-Grade SARIMAX Line-Pack Formulation
 Standard univariate time-series models (like basic ARIMA) fail to predict sudden pressure collapses when past pressure logs look flat. The GAIL agent implements a **Multivariate Seasonal AutoRegressive Integrated Moving Average with eXogenous regressors**:
 
 $$\text{SARIMAX}(p, d, q) \times (P, D, Q)_s \text{ with exogenous matrix } \mathbf{X}$$
 
-* **Target Variable ($Y_t$):** Chhainsa compressor station line-pack pressure ($\text{kg/cm}^2$).
-* **Model Orders:** $(p=1, d=1, q=0) \times (P=1, D=0, Q=0)_{s=24}$
-* **Exogenous Variables ($\mathbf{X}$):**
-  1. $X_{1,t}$: Scheduled downstream customer off-take nominations from fertilizer units (HURL, NFL) and power stations (MMSCMD).
-  2. $X_{2,t}$: IMD ambient temperature forecasts ($^\circ\text{C}$), accounting for gas turbine thermal derating and daytime electrical air-conditioning surges.
+- **Target Variable ($Y_t$):** Chhainsa compressor station linepack pressure ($\text{kg/cm}^2$).
+- **Exogenous Regressors ($\mathbf{X}_t$):**
+  1. $X_{1,t}$: Scheduled downstream customer nominations (MMSCMD) from anchor fertilizer units.
+  2. $X_{2,t}$: Real-time ambient temperature ($^\circ\text{C}$) from Google DeepMind WeatherNext 3.
+- **Seasonality ($s=24$):** Diurnal 24-hour cycle corresponding to daily industrial dispatch and ambient temperature shifts.
+- **Hyperparameter Optimization:** Automatic bounded AIC grid search over Box-Jenkins space:
+  - Non-seasonal orders: $p \in [0, 2]$, $d = 1$, $q \in [0, 2]$
+  - Seasonal orders: $P \in [0, 1]$, $D \in [0, 1]$, $Q \in [0, 1]$
+- **Backtesting Verification:** 6-hour out-of-sample holdout validation measuring Mean Absolute Percentage Error ($\text{MAPE} < 2.0\%$).
 
-### 3.2 Physical Justification of Early Warning (Hydraulic Wave Propagation)
-Natural gas travels through cross-country trunklines at approximately **$25 \text{ to } 40\text{ km/h}$**. 
-* The distance between the **Vijaipur Compressor Hub** and the **Chhainsa Station** is approximately **$380\text{ km}$**.
-* A hydraulic line-pack pressure wave initiated at Vijaipur requires **$10 \text{ to } 14\text{ hours}$** of physical transit time to manifest at Chhainsa.
-* By ingesting advance nominations ($X_{1}$) at $T=0$, the SARIMAX model predicts line-pack depletion at $T+14\text{ hours}$, allowing the operator to adjust Vijaipur setpoints (+3.8%) at $T=0$, so the physical gas pack arrives exactly as the fertilizer plant off-take ramps up.
+### 3.2 Transient Hydraulic Delay Physics
+Natural gas is a compressible fluid. Pressure waves generated at upstream compressor stations do not travel at the speed of light or sound in open air, but at the sonic velocity in high-pressure methane ($\approx 380\text{--}420\text{ m/s}$) moderated by pipeline friction, resulting in bulk hydraulic wave propagation velocities of:
 
-### 3.3 Project Sanchay Fuel Gas Quantification
-* **Auxiliary Peaking Turbine Burn:** Starting an additional Siemens SGT gas turbine at Chhainsa consumes $\approx 22,000\text{ SCM/day}$ of internal fuel gas.
-* **Proactive Line-Pack Stabilization:** Boosting Vijaipur baseline throughput by $+3.8\%$ eliminates auxiliary turbine starts, resulting in net fuel savings of **$18,500\text{ SCM/day}$**.
-* **Daily Margin Recovery:** $18,500\text{ SCM} \times ₹25/\text{SCM} = \mathbf{₹4,62,500/\text{day}}$.
-* **Annualized Asset Impact:** $\mathbf{₹16.88\text{ Crore / year}}$ in direct fuel gas savings per compressor hub.
+$$v_{\text{wave}} \approx 30\text{--}40\text{ km/h}$$
 
----
+For the critical transmission leg from **Vijaipur Compressor Hub** to **Chhainsa Station** ($\Delta x \approx 380\text{ km}$):
 
-## 4. Component Specification & Tool Contracts
+$$\Delta t_{\text{transit}} = \frac{380\text{ km}}{35\text{ km/h}} \approx 8\text{--}10\text{ hours}$$
 
-The agent implements 6 concrete callable tools conforming to Pydantic v2 schemas in `app/contracts.py`:
-
-| Tool Name | Act | Inputs | Primary Output | A2UI Visual Artifact |
-| :--- | :--- | :--- | :--- | :--- |
-| `audit_grid_and_weather_risk` | Act 1 | `corridor: str` | `GridHealthAuditResponse` | GeoJSON Pipeline Map + IMD Flash Flood Alert Card |
-| `query_scada_telemetry` | Act 2 | `station: str, hours: int` | `ScadaHistoryResponse` | 72h Multi-variable Vega-Lite Time-Series Chart |
-| `run_sarimax_linepack_forecast` | Act 3 | `station: str, horizon: int` | `SarimaxForecastResponse` | 24h Predictive Confidence Band & Setpoint Card |
-| `compile_executive_briefing` | Act 4 | None | `ExecutiveBriefingReport` | Multi-Source Styled HTML/PDF Briefing Document |
-| `stage_sap_maintenance_order` | Act 5 | `SapWorkOrderRequest` | `SapWorkOrderResponse` | SAP S/4HANA Work Order Confirmation Badge |
-| `query_enterprise_knowledge` | Act 5 | `query: str` | `EnterpriseQueryResponse` | Cited Fact Card (GAIL AI Tarang Verified) |
+**Operational Significance:** If customer offtake surges at $T+14\text{h}$, waiting until the pressure drops at Chhainsa before ramping Vijaipur causes an unavoidable line-pack collapse. The agent identifies the deficit $14$ hours in advance and issues the setpoint increase at $T+6\text{h}$ to $T+8\text{h}$ (8 hours ahead), ensuring the gas wave arrives exactly as the industrial demand spikes.
 
 ---
 
-## 5. Security, IAM & Data Governance
+## 4. Google DeepMind WeatherNext 3 Model Integration
 
-1. **Service Account Identity:** `gail-grid-agent@og-agentic-ecosystem.iam.gserviceaccount.com`
-2. **GCS Storage Scope:** `gs://og-agentic-gail-data-asia-south1/`
-   * Read: `SCADA Telemetry/`, `Siemens RDS Logs/`, `IMD Weather Feeds/`
-   * Write: `Executive Briefings/`, `Optimized Setpoint Advisories/`
-3. **ERP Authentication:** Mutual TLS (mTLS) with OAuth 2.0 Client Credentials targeting RISE with SAP S/4HANA Cloud OData v4 endpoints (`/sap/opu/odata4/sap/api_maintorder/`).
-4. **Air-Gap Telemetry Isolation:** SCADA telemetry is processed via read-only replication from Yokogawa FAST/TOOLS OPC-UA Historian into GCS Medallion landing zones, preventing write-back risks to safety-critical safety instrumented systems (SIS).
+The agent queries the operational WeatherNext 3 AI model (0.05° station ensemble):
+- **Resolution:** 0.05° high-resolution station calibration (~5 km spatial resolution).
+- **Ensemble Sampling:** 64-member probabilistic ensemble statistics ($p_{10}, p_{25}, p_{50}\text{ median}, p_{75}, p_{90}$).
+- **Hydrological Coupling:** Couples hourly precipitation intensity ($\text{mm/h}$) and catchment saturation to river gauge heights, flagging scour velocity thresholds ($v > 3.2\text{ m/s}$) at pipeline submerged crossings (e.g. Gauna-Bawana Yamuna crossing).
 
 ---
 
-## 6. Verification & Test Architecture
+## 5. Project Sanchay ROI & Decarbonization Formulation
 
-The service includes an automated pytest suite validating all 5 acts:
-* `tests/test_contracts.py`: Strict schema typing and validation.
-* `tests/test_sarimax_analytics.py`: Model convergence, AIC computation, and setpoint logic.
-* `tests/test_tools_agent.py`: End-to-end execution of all 6 tools and conversational routing.
+Under Project Sanchay, compressor fuel gas optimization yields direct financial and ESG returns:
+
+$$\text{Daily Savings (INR)} = \Delta V_{\text{fuel}} \times P_{\text{gas}} = 18,500\text{ SCM/day} \times ₹25/\text{SCM} = ₹4,62,500/\text{day}$$
+$$\text{Annualized Savings} = ₹4,62,500 \times 365 = ₹16.88\text{ Crore/year}$$
+$$\text{CO}_2\text{e Avoided} = 18,500\text{ SCM/day} \times 2.0\text{ kg CO}_2/\text{SCM} \times 365 = 13,500\text{ MT CO}_2\text{e/year}$$

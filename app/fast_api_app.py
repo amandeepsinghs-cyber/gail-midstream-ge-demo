@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from app.agent import GailPipelineAgent
 from app.integration.tools import (
     audit_grid_and_weather_risk,
+    get_weathernext_forecast,
     query_scada_telemetry,
     run_sarimax_linepack_forecast,
     compile_executive_briefing,
@@ -81,6 +82,7 @@ def get_agent_card():
         "runtime_target": "agent_runtime",
         "skills": [
             "audit_grid_and_weather_risk",
+            "get_weathernext_forecast",
             "query_scada_telemetry",
             "run_sarimax_linepack_forecast",
             "compile_executive_briefing",

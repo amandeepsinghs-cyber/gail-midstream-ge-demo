@@ -266,8 +266,14 @@
         
         <div class="act-btn" onclick="runAct(1)">
             <div class="act-header"><span>ACT 1</span><span>SPATIAL GIS</span></div>
-            <div class="act-title">Maps & Weather Layer</div>
-            <div class="act-desc">Grid integrity audit & IMD Yamuna flash-flood risk overlay.</div>
+            <div class="act-title">Maps & Spatial Layer</div>
+            <div class="act-desc">Grid integrity audit & cross-country pipeline network.</div>
+        </div>
+
+        <div class="act-btn" onclick="runAct('weather')">
+            <div class="act-header"><span>WEATHER AI</span><span>DEEPMIND</span></div>
+            <div class="act-title">WeatherNext 3 Models</div>
+            <div class="act-desc">0.05° probabilistic ensemble & Yamuna river scour alerts.</div>
         </div>
 
         <div class="act-btn" onclick="runAct(2)">
@@ -355,9 +361,10 @@
         dashArray: '8, 8'
     }).addTo(map);
 
-    // Add Key Station Markers
-    L.marker([24.1627, 77.2941]).addTo(map).bindPopup("<b>Vijaipur Compressor Hub</b><br>Throughput: 48.5 MMSCMD<br>8 Active Gas Turbines");
-    L.marker([28.2711, 77.3412]).addTo(map).bindPopup("<b>Chhainsa Compressor Station</b><br>Linepack: 81.47 kg/cm²");
+    // Add Key Station Markers with WeatherNext 3 Coordinates
+    L.marker([21.1702, 72.7311]).addTo(map).bindPopup("<b>Hazira Gas Processing Complex</b><br>LNG Ingestion: 32.4 MMSCMD<br>WeatherNext 3: 31.2°C (Coast Calm)");
+    L.marker([24.1627, 77.2941]).addTo(map).bindPopup("<b>Vijaipur Compressor Hub</b><br>Throughput: 48.5 MMSCMD · 8 Gas Turbines<br>Project Sanchay: +3.8% Setpoint Recommended");
+    L.marker([28.2711, 77.3412]).addTo(map).bindPopup("<b>Chhainsa Compressor Station</b><br>Linepack: 81.47 kg/cm²<br>SARIMAX: Deficit predicted at T+14h");
 
     // Add River Flood Alert Pin (Pulsing)
     const floodIcon = L.divIcon({
@@ -366,10 +373,11 @@
         iconSize: [14, 14]
     });
     const floodMarker = L.marker([28.7912, 77.0315], {icon: floodIcon}).addTo(map)
-        .bindPopup("<b style='color:#d93025;'>CRITICAL HAZARD: Gauna-Bawana River Crossing</b><br>River Level: 206.40m (Danger: 205.33m)<br>115.6mm Rainfall | Acoustic Vibration Alert");
+        .bindPopup("<b style='color:#d93025;'>CRITICAL HAZARD: Gauna-Bawana Yamuna Crossing</b><br>WeatherNext 3 Ensemble: 226.2mm (p90)<br>River Level: 206.40m (Danger: 205.33m)<br>Scour Depth Risk: 4.12m (Limit: 4.50m)");
 
     const ACT_PROMPTS = {
         1: "Gemini, initialize a grid health and risk audit across the HVJ and MNJPL pipeline corridors for the next 24 hours.",
+        "weather": "Gemini, what is the WeatherNext 3 probabilistic weather forecast for the Yamuna River crossing?",
         2: "Access live telemetry for Chhainsa Compressor Station and plot 72-hour historical trends for line-pack pressure, gas flow rate, and Siemens turbine exhaust temperatures.",
         3: "Execute a 24-hour predictive SARIMAX demand forecast for Chhainsa station considering downstream fertilizer plant off-takes, and calculate optimal compressor setpoints at Vijaipur.",
         4: "Compile this grid audit, weather assessment, SARIMAX forecast, and fuel-saving calculations into an official Daily Line-Pack & Integrity Executive Briefing.",
@@ -393,9 +401,14 @@
             if (actNum === 1) {
                 map.flyTo([28.7912, 77.0315], 9, {duration: 1.5});
                 setTimeout(() => floodMarker.openPopup(), 1600);
+            } else if (actNum === 'weather' && data.a2ui_card && data.a2ui_card.vega_lite_spec) {
+                map.flyTo([28.7912, 77.0315], 11, {duration: 1.2});
+                renderVegaChart(data.a2ui_card.vega_lite_spec);
             } else if (actNum === 2 && data.a2ui_card && data.a2ui_card.vega_lite_spec) {
+                map.flyTo([28.2711, 77.3412], 9, {duration: 1.2});
                 renderVegaChart(data.a2ui_card.vega_lite_spec);
             } else if (actNum === 3 && data.a2ui_card && data.a2ui_card.vega_lite_spec) {
+                map.flyTo([24.1627, 77.2941], 8, {duration: 1.2});
                 renderVegaChart(data.a2ui_card.vega_lite_spec);
             } else if (actNum === 4) {
                 appendAgentMsg("EXECUTIVE ARTIFACT", "Compiled official publication: <a href='/api/v1/report/latest' target='_blank' style='color:#58a6ff;'>Open GAIL Daily Line-Pack Briefing</a>");

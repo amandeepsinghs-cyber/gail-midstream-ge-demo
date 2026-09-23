@@ -62,6 +62,12 @@ def test_agent_orchestrator_all_acts():
     assert "ACT 1" in r1["act"]
     assert "Gauna-Bawana" in r1["narrative"]
     
+    # Weather AI: WeatherNext 3
+    rw = agent.execute_prompt("What is the WeatherNext 3 forecast for the Yamuna River crossing?")
+    assert "WEATHER AI" in rw["act"]
+    assert "WeatherNext 3" in rw["narrative"]
+    assert "CRITICAL" in rw["narrative"]
+
     # Act 2
     r2 = agent.execute_prompt("Access live telemetry for Chhainsa Compressor Station")
     assert "ACT 2" in r2["act"]
