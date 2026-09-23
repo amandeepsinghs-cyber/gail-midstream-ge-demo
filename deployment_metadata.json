@@ -1,9 +1,7 @@
 {
-  "remote_agent_runtime_id": "projects/349946979746/locations/asia-south1/reasoningEngines/5487856048276504576",
+  "remote_agent_runtime_id": "projects/349946979746/locations/asia-south1/reasoningEngines/6842313636208181248",
   "deployment_target": "agent_runtime",
   "is_a2a": true,
   "agent_directory": "app",
-  "app_name": "gail_grid_advisor",
-  "gemini_enterprise_engine_id": "projects/349946979746/locations/global/collections/default_collection/engines/oil-and-gas-agentic-transf_1788683272432",
-  "deployment_timestamp": "2026-09-23T18:18:25+00:00"
+  "deployment_timestamp": "2026-09-23T18:42:16.434129+00:00"
 }
