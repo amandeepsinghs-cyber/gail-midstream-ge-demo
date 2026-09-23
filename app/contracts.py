@@ -4,8 +4,36 @@ Strict validation across all 5 demonstration acts, WeatherNext 3 models,
 and A2UI v0.9 component specifications. Supports both v1.0 and v2.0 field aliases.
 """
 
+from enum import Enum
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
+
+# =============================================================================
+# A2UI FRONTEND MESSAGE CONTRACTS (GEMINI ENTERPRISE)
+# =============================================================================
+
+class A2uiCatalogVersion(str, Enum):
+    """Gemini Enterprise A2UI catalog version."""
+    V0_8 = "v0.8"   # Legacy Lit renderer
+    V0_9 = "v0.9"   # Active Angular renderer (VegaChart, Canvas, Material 3)
+
+
+ACTIVE_A2UI_CATALOG_VERSION: A2uiCatalogVersion = A2uiCatalogVersion.V0_9
+A2UI_MIME_TYPE: str = "application/json+a2ui"
+DEFAULT_GE_CATALOG_ID: str = (
+    "https://www.gstatic.com/vertexaisearch/a2ui/v0_9/gemini_enterprise_composite_catalog.json"
+)
+
+
+class A2uiMessage(BaseModel):
+    """A single protocol message emitted to the Gemini Enterprise A2UI surface.
+    
+    Each lifecycle message is serialized into an independent A2A DataPart envelope.
+    """
+    message_type: str                  # e.g. "createSurface", "updateComponents", "updateDataModel"
+    surface_id: str                    # Unique surface identifier per conversation turn
+    payload: Dict[str, Any]            # Version-specific message contents
+    catalog_version: A2uiCatalogVersion = ACTIVE_A2UI_CATALOG_VERSION
 
 
 # =============================================================================
@@ -115,6 +143,7 @@ class SarimaxForecastResponse(BaseModel):
     pressure_deficit_hour_ahead: int = 14
     critical_pressure_threshold_kg_cm2: float = 75.0
     projected_tadir_minimum_kg_cm2: float = 74.2
+    minimum_predicted_pressure_kg_cm2: float = 74.2
     forecast_records: List[Dict[str, Any]] = Field(default_factory=list)
     hourly_forecast: List[Dict[str, Any]] = Field(default_factory=list)
     setpoint_recommendation: SetpointRecommendation
