@@ -1,0 +1,44 @@
+{
+  "data_classification": "SAMPLE DATA for demonstration - structure mirrors a real LNG contract book; your contract data plugs in here.",
+  "owner": "GAIL Marketing - LNG Portfolio Desk",
+  "access": "Restricted: Marketing & Finance (contract prices)",
+  "as_of": "2026-09-24",
+  "contracts": [
+    {
+      "id": "LT-QATAR-01",
+      "counterparty": "Qatar long-term supply (via Dahej)",
+      "type": "Long-term SPA, DES Dahej",
+      "price_formula": {"kind": "oil_linked", "brent_slope": 0.1267, "constant_usd_mmbtu": 0.5, "text": "12.67% × Brent + $0.50"},
+      "freight_usd_mmbtu": 0.45,
+      "winter_cargoes_per_month": 2,
+      "status": "FORCE_MAJEURE",
+      "status_note": "Seller force majeure notice (Ras Laffan outage / Hormuz transit). No winter deliveries assumed.",
+      "delivered_this_winter_cargoes_per_month": 0
+    },
+    {
+      "id": "LT-US-01",
+      "counterparty": "US Gulf Coast LNG (FOB, destination-flexible)",
+      "type": "Long-term SPA, FOB US Gulf",
+      "price_formula": {"kind": "hh_linked", "hh_multiplier": 1.15, "liquefaction_fee_usd_mmbtu": 3.0, "text": "115% × Henry Hub + $3.00"},
+      "freight_usd_mmbtu": 3.1,
+      "transit_days": 34,
+      "winter_cargoes_per_month": 2,
+      "status": "ACTIVE",
+      "status_note": "Destination-flexible: cargoes can be resold. All winter cargoes currently nominated to Dahej.",
+      "delivered_this_winter_cargoes_per_month": 2
+    },
+    {
+      "id": "TERM-PORTFOLIO-02",
+      "counterparty": "Portfolio term supply (non-Gulf origin)",
+      "type": "Mid-term SPA, DES Dahej",
+      "price_formula": {"kind": "oil_linked", "brent_slope": 0.13, "constant_usd_mmbtu": 0.6, "text": "13.0% × Brent + $0.60"},
+      "freight_usd_mmbtu": 0.0,
+      "winter_cargoes_per_month": 3,
+      "status": "ACTIVE",
+      "status_note": "Delivering as scheduled.",
+      "delivered_this_winter_cargoes_per_month": 3
+    }
+  ],
+  "cargo_size_mmbtu": 3200000,
+  "dahej_regas_usd_mmbtu": 0.6
+}

@@ -1,0 +1,66 @@
+{
+ "as_of_ist": "24 Sep 2026 17:55 IST",
+ "henry_hub_usd_mmbtu": 3.139,
+ "ttf_eur_mwh": 74.305,
+ "ttf_usd_mmbtu": 24.77,
+ "brent_usd_bbl": 105.05,
+ "brent_usd_mmbtu": 18.112,
+ "usdinr": 95.945,
+ "eurusd": 1.1374,
+ "day_change_pct": {
+  "HENRY_HUB": 3.84,
+  "TTF": 3.19,
+  "BRENT": 1.91,
+  "USDINR": 0.27
+ },
+ "contracts": {
+  "HENRY_HUB": "Natural Gas Nov 26",
+  "TTF": "Dutch TTF Natural Gas Calendar ",
+  "BRENT": "Brent Crude Oil Last Day Financ",
+  "USDINR": "USD/INR",
+  "EURUSD": "EUR/USD"
+ },
+ "tickers": {
+  "HENRY_HUB": "NG=F",
+  "TTF": "TTF=F",
+  "BRENT": "BZ=F",
+  "USDINR": "INR=X",
+  "EURUSD": "EURUSD=X"
+ },
+ "winter_futures": [
+  {
+   "month": "2026-12",
+   "label": "Dec-26",
+   "TTF": 71.621,
+   "TTF_source": "TTFZ26.NYM settle 2026-09-23",
+   "HENRY_HUB": 3.501,
+   "HENRY_HUB_source": "NGZ26.NYM settle 2026-09-24",
+   "BRENT": 99.62,
+   "BRENT_source": "BZZ26.NYM settle 2026-09-24",
+   "TTF_usd_mmbtu": 23.875
+  },
+  {
+   "month": "2027-01",
+   "label": "Jan-27",
+   "TTF": 71.423,
+   "TTF_source": "TTFF27.NYM settle 2026-09-23",
+   "HENRY_HUB": 3.878,
+   "HENRY_HUB_source": "NGF27.NYM settle 2026-09-24",
+   "BRENT": 96.23,
+   "BRENT_source": "BZF27.NYM settle 2026-09-24",
+   "TTF_usd_mmbtu": 23.809
+  },
+  {
+   "month": "2027-02",
+   "label": "Feb-27",
+   "TTF": 71.423,
+   "TTF_source": "previous month carried (not on free feed)",
+   "HENRY_HUB": 3.544,
+   "HENRY_HUB_source": "NGG27.NYM settle 2026-09-24",
+   "BRENT": 92.53,
+   "BRENT_source": "BZG27.NYM settle 2026-09-23",
+   "TTF_usd_mmbtu": 23.809
+  }
+ ],
+ "source_mode": "bundled"
+}

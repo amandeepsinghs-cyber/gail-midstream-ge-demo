@@ -1,0 +1,49 @@
+{
+  "data_classification": "SAMPLE DATA for demonstration - structure mirrors GAIL's Gas Management System; your GMS / nominations data plugs in here.",
+  "owner": "GAIL Marketing - Gas Management System (GMS)",
+  "as_of": "2026-09-24",
+  "mmbtu_per_mmscm": 37300,
+  "winter_demand_mmscmd": [
+    {
+      "sector": "Fertilizer (urea plants)",
+      "mmscmd": 36.0,
+      "priority": true,
+      "priority_reason": "Government allocation priority"
+    },
+    {
+      "sector": "City Gas (CNG / domestic PNG)",
+      "mmscmd": 24.0,
+      "priority": true,
+      "priority_reason": "Government allocation priority"
+    },
+    {
+      "sector": "Refineries & petrochemicals",
+      "mmscmd": 20.0,
+      "priority": false
+    },
+    {
+      "sector": "Power",
+      "mmscmd": 10.0,
+      "priority": false
+    },
+    {
+      "sector": "Other industrial",
+      "mmscmd": 6.0,
+      "priority": false
+    }
+  ],
+  "domestic_gas_allocation_mmscmd": 75.0,
+  "dahej_inventory": {
+    "current_tbtu": 6.1,
+    "minimum_operating_tbtu": 2.5,
+    "planned_winter_drawdown_tbtu_per_month": 1.12,
+    "cover_days_at_current_sendout": 7
+  },
+  "months": [
+    "2026-12",
+    "2027-01",
+    "2027-02"
+  ],
+  "firm_gsa_shortfall_compensation_usd_mmbtu": 2.0,
+  "firm_gsa_note": "Firm gas sales agreements with non-priority customers: GAIL compensates any shortfall it causes (sample rate)."
+}

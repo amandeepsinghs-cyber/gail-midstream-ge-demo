@@ -101,8 +101,8 @@ app: FastAPI = get_fast_api_app(
     otel_to_cloud=otel_to_cloud,
     lifespan=lifespan,
 )
-app.title = "GAIL Autonomous Pipeline Grid, Predictive Analytics & Executive Advisory Agent"
-app.description = "API for interacting with the GAIL Sovereign Grid Advisor in Gemini Enterprise"
+app.title = "GAIL Gas Supply Decision Agent"
+app.description = "Combines GAIL's contracts, inventory and SAP data with live gas markets to recommend and stage winter LNG procurement decisions."
 
 attach_reasoning_engine_routes(app)
 

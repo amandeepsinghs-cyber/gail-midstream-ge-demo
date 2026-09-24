@@ -1,114 +1,174 @@
-# One Morning at GAIL — Stage Script (V3)
+# The Winter Call: Stage Script (V4, extended)
 
-**Audience:** ~300 GAIL employees across verticals · **Runtime:** ~8 minutes · **App:** Gemini Enterprise → GAIL Pipeline Agent
+**Audience:** ~300 GAIL employees, including traders · **Runtime:** ~12 minutes · **App:** Gemini Enterprise → GAIL Gas Supply Decision Agent
 
-**The one idea to land:** *Any data → any model → any report, in one conversation. We show it on gas. You swap in your own work.*
+**The thesis:** *A critical decision needs data from many systems. Gemini Enterprise gathers the **data** (GAIL's systems and the outside world), **analyses** it, helps the experts **decide**, and **acts** on it.*
 
-> [!NOTE]
-> Nominations, SCADA history and LNG prices are **illustrative demo data**. The SARIMAX model and the landed-cost formulas are real and run live.
+**Closing line:** *"Bloomberg knows the market. SAP knows GAIL. Only Gemini Enterprise puts them in one decision."*
+
+> [!IMPORTANT]
+> **Market prices are LIVE** (Yahoo Finance), and news is live (Google Search). The numbers below are from the 24 Sep rehearsal and **will be different on the day**. Read the numbers off the screen, not this page.
+> GAIL's contract book, supply plan, Dahej inventory, SAP orders and budget, and policy are **SAMPLE data** stored in the data lake (`gs://gail-midstream-ge-demo-datalake/raw/gail_internal/`).
+
+Every card tags each number with where it came from: 🏢 = GAIL data, 🌐 = outside data. **Point at the tags.** They carry the Gemini Enterprise story.
+
+| Stage | Questions |
+|---|---|
+| **Data** | Q1 the problem · Q2 our own position · Q3 the market |
+| **Analysis** | Q4 context · Q5 outlook · Q6 Monte Carlo |
+| **Decision** | Q6 recommendation |
+| **Action** | Q7 |
 
 ---
 
-## Opening (30 seconds, no screen yet)
+## Opening (45 seconds, your slide)
 
-> "It's 6 AM at the National Gas Management Centre. Overnight, customers revised tomorrow's nominations.
-> Three questions land on one desk before the 9 AM call: **Can we supply it? What's the cheapest gas? Will the pipeline hold?**
-> Today that is four people, five systems and a morning of spreadsheets. Watch one conversation do it."
+> "Qatar supplies a large share of India's LNG. This year Ras Laffan is under force majeure. Europe and Asia are competing for every spare cargo, TTF is near €74 and Brent is around $100.
+> GAIL has a winter to get through, and the desk has one critical call to make: **do we lock in replacement cargoes now, or wait for prices to fall?**
+> Get it wrong and it costs hundreds of crores. Watch how Gemini Enterprise helps our experts make that call."
 
 ---
 
-## Beat 1 — The Problem (data access)
+## Q1 · Data: the problem (GAIL data + news)
 
 **Prompt:**
-> Show me today's grid flows and tomorrow's customer nominations.
+> What is the impact of the Qatar force majeure on our winter gas supply?
 
-**What appears:** Grid-flow card plus the nomination alert.
-- Fertilizer is up +3.0 MMSCMD and CGD is up +1.01 MMSCMD.
-- That is a **4.0 MMSCMD shortfall from 08:00**.
+**What appears:** Winter supply-gap card.
+- **6 cargoes (~19 TBtu) short, Dec–Feb.**
+- Fertilizer and city gas are protected.
+- **Every $1/MMBtu move is worth ₹184 Cr.**
 
 **Say:**
-> "It pulled SCADA, GIS and commercial nominations from our data lake and reconciled them. It found a gap nobody asked it to look for."
-
-**Swap this for yours:** *"Finance: this is your receivables plus the bank feed. HR: rosters against leave. Same move."*
+> "It read our contract book and winter plan from the data lake 🏢, and checked today's news 🌐. We are six cargoes short this winter."
 
 ---
 
-## Beat 2 — The Decision (deterministic model #1)
+## Q2 · Data: our own position (the internal-data moment)
 
 **Prompt:**
-> What's the cheapest way to cover that shortfall?
+> Check our own position: inventory, customer commitments and what's already in SAP.
 
-**What appears:** Delivered-cost bar chart at Dahej for three options.
+**What appears:** "Our own position: inventory, customers, SAP" card, with a deadline chart.
+- ⏱️ **Deadline: the December cargoes must be contracted by 17 Oct, 23 days from today** (45-day lead time).
+- 🛢️ **Dahej tanks:** 6.1 TBtu, only 3.6 usable (7 days of cover). **Not enough to absorb a missed month** (~7 TBtu).
+- 👥 **Customers:** fertilizer and city gas are must-supply (60 of 96 MMSCMD). A missed cargo means a cut to other customers and about ₹61 Cr in compensation.
+- 📄 **SAP:** no purchase order covers the gap; the Qatar order is **blocked (force majeure)**.
+- 💰 **SAP budget:** replacement budget ₹4,053 Cr, nothing committed yet.
+- ✍️ **Approver:** Director (Marketing), under the delegation of authority.
 
-| Option | Delivered cost | Verdict |
-|---|---|---|
-| Qatar time-swap | **$11.83/MMBtu** | Recommended |
-| Spot cargo (JKM) | $14.45 | Dearer |
-| US Henry Hub re-route | $10.02 | Too late: arrives in 34 days, but we only have 7 days of cover |
+**Say (the key moment):**
+> "Now our own systems: tanks, customers, open orders, budget, sign-off rules. No market terminal has any of this.
+> And there's a **deadline**: we can only wait 23 days for December, and our tanks can't absorb a missed cargo."
 
-- **Saving vs spot: ₹70.3 Cr.**
+---
+
+## Q3 · Data: the market vs our contracts and budget
+
+**Prompt:**
+> What is gas costing today, and what does that mean for our contracts and our budget?
+
+**What appears:** Live-market card.
+- Henry Hub ~$3.1, TTF ~€74 (≈$25/MMBtu), Brent ~$100, plus the winter futures.
+- **Our US contract cargo lands at ~$10.9** vs **~$24.9** to replace it at spot.
+- Replacing Qatar costs about **₹2,060 Cr extra** this winter.
+- 💰 Locking in all 6 cargoes at today's futures costs **~₹4,593 Cr, ₹540 Cr over the SAP budget**.
 
 **Say:**
-> "Notice it didn't just pick the cheapest number. Henry Hub is cheapest on paper but arrives after we run out. That is a constraint, and fixed formulas enforce it, not guesswork."
-
-**Swap this for yours:** *"Procurement: vendor bids against delivery dates. Projects: contractor quotes against schedule."*
+> "These prices were fetched seconds ago 🌐 and applied to **our** contracts and **our** SAP budget 🏢. Locking in today costs more than we budgeted."
 
 ---
 
-## Beat 3 — The Proof (deterministic model #2)
+## Q4 · Analysis: context
 
 **Prompt:**
-> Can the grid carry it? Forecast Chhainsa for 24 hours.
+> How did we get here? Show me the last 5 years.
 
-**What appears:** A five-step model workflow, then one chart read left to right:
-- **Navy line (last 48h, actual):** the daily rhythm. Line-pack packs overnight and drafts through the day (~2.8 kg/cm² swing).
-- **"Now" marker at 06:00**, where the forecast begins.
-- **Red dashed line with cones (without action):** crosses the 76 kg/cm² contract floor at **19:00 (T+14h)**.
-- **Green dashed line with cones (with the LNG swap):** bottoms at **79.53 kg/cm²**. Even the 95% band stays above the floor.
-- **Validation:** trained on 48h, predicted the last 24h with **0.33% error**.
-- **Setpoint:** Vijaipur +3.8%.
-
-**Say (walk the chart left to right):**
-> "On the left is what actually happened: the grid breathes every day. The agent loaded that history, learned the pattern, and proved it by predicting yesterday with a third of a percent error.
-> Now look right. The shaded cones are its confidence, and they widen because the future is uncertain. Red is tonight if we do nothing: a breach at 7 PM. Green is tonight with the swap: safe, even at the edge of the cone.
-> A forecast tells you what will happen. This tells you what will happen **if you act**."
-
-**Swap this for yours:** *"Any forecast you run in Excel today: demand, cash flow, manpower, maintenance. Plus the 'what if we act' version."*
-
----
-
-## Beat 4 — The Action (report + system of record)
-
-**Prompt:**
-> Brief management and raise the SAP order.
-
-**What appears:** A "Decision on one page" card, a link to the full HTML briefing, and a staged SAP work order ID.
+**What appears:** 5-year weekly chart of TTF, Henry Hub and Brent: the 2022 spike, today's spike, and TTF volatility of ~90% a year.
 
 **Say:**
-> "One page for the MD with the decision, the money and the risk. Every number traces back to the charts you just saw. The SAP order is staged for human approval, not auto-posted."
+> "This market swings hard. That is what makes waiting risky."
 
-**Swap this for yours:** *"Your monthly MIS, your board note, your audit pack."*
+---
+
+## Q5 · Analysis: the experts
+
+**Prompt:**
+> What do the experts expect?
+
+**What appears:** Dated, sourced forecasts from BofA, Goldman, EIA, Fitch and Enverus. The 2027 consensus is well below today, but the spread is wide.
+
+**Say:**
+> "Experts expect prices to fall, but they disagree by how much. So waiting is a bet. So let's test that bet properly."
+
+---
+
+## Q6 · Analysis → Decision (Monte Carlo)
+
+**Prompt:**
+> Run a Monte Carlo simulation of winter prices and test three options against our risk limit and deadlines: lock in now, lock in half, or wait. What do you recommend?
+
+**What appears:** The answer opens with the method ("I simulated 10,000 winter price paths…"), then a strategy card with a fan chart and three strategies (lock all / lock half / wait until each deadline).
+- 10,000 simulated price paths, from live futures, 5-year volatility and the analyst consensus. Waiting is priced at each month's contracting deadline.
+- **Recommendation: lock in all 6 cargoes now.**
+  - Waiting is cheaper in about **60%** of simulated futures, but saves only about **₹118 Cr** on average.
+  - In the worst 5%, waiting costs about **₹2,300 Cr more**, which breaks GAIL's **₹800 Cr risk limit** 🏢.
+- The card lists the internal checks: tanks, deadline, budget, approver.
+
+**Say:**
+> "This isn't gut feel. It simulated 10,000 possible winters and tested every option against our risk limit and deadlines.
+> Waiting might save a little. But the downside breaks our risk limit, our tanks can't absorb a missed cargo, and the clock is already running.
+> The market data and our own data point the same way. It doesn't replace the expert; it gives the Director the full picture in minutes."
+
+---
+
+## Q7 · Action
+
+**Prompt:**
+> Prepare the approval and stage it in SAP.
+
+**What appears:** Approval card: the **approver** (set by the delegation of authority), a **link to the approval memo** (HTML with charts and a "checked against GAIL's position" section, in GCS), and an **SAP purchase requisition AWAITING APPROVAL**.
+
+**Say:**
+> "It picked the right approver from our own rules, wrote the memo with every number traced, and staged the order in SAP. **Nothing moves until a human approves.**"
 
 ---
 
 ## Close (20 seconds)
 
-> "Four questions. Data, two models, a report and an ERP entry. One conversation.
-> Nothing here was gas-specific except the data. **What is the 6 AM question on your desk?**"
+> "Seven questions, one conversation. Data from our contracts, tanks, customers, SAP and the market, **gathered, analysed, decided and actioned**.
+> Bloomberg knows the market. SAP knows GAIL. **Only Gemini Enterprise puts them in one decision.**"
 
 ---
+
+## Talk-track for tricky moments
+
+| If… | Say |
+|---|---|
+| News says Qatar may restart in November | "Maybe. But our December deadline is in 23 days and our tanks can't cover a missed cargo. We can't plan a winter on maybe." |
+| "Is the recommendation always 'lock in'?" | "No. It depends on today's prices, our risk limit and our deadlines. Change the limit or the budget and it can say 'lock in half'." |
+| "Is this real GAIL data?" | "The market data is live. The contracts, inventory, SAP orders and policy are sample data in a data lake. Plug in the real systems and the same flow runs." |
+| "Why not just use ChatGPT / Bloomberg?" | Ask the agent: **"Why do we need Gemini Enterprise for this?"** |
+| "Will it trade on its own?" | "No. It stages the SAP request; a human approves." |
+
+## Optional Q8 (only if asked about the pipeline)
+
+> Can the pipeline take the volumes?
+
+This shows the V3 SARIMAX line-pack chart. It uses an **illustrative +4.0 MMSCMD** swap, not the 5.7 MMSCMD winter gap. Call it "an example of the pipeline check".
 
 ## Backup prompts (if something stalls)
 
 | Situation | Prompt |
 |---|---|
 | Card didn't render | "Show that as a chart." |
-| Audience asks "how does the model work?" | "Explain the SARIMAX model and its fit quality." |
-| Report link slow | "Summarise the decision in three bullets." |
-| Fresh start needed | Open a **new chat** and restart from Beat 1 |
+| Answer too long | "Summarise that in three bullets." |
+| Memo link slow | "Summarise the approval in three bullets." |
+| Fresh start needed | Open a **new chat** and restart from Q1 |
 
 ## Pre-flight checklist (T-15 min)
-- [ ] Open a new chat in the GE app and run Beat 1 once to warm the engine (first SARIMAX fit takes about 4s).
-- [ ] Confirm the GAIL logo shows on the agent tile.
-- [ ] Open the report link once in a browser signed in to the demo account.
+- [ ] Open a new chat and run Q1–Q2 once to warm the engine and the price cache.
+- [ ] Note today's headline numbers: TTF, gap cost, **days to the December deadline**, and the recommendation.
+- [ ] Check what today's Qatar news says, and have the talk-track line ready.
+- [ ] Open the memo link once in a browser signed in to the demo account.
 - [ ] Close the warm-up chat and open a fresh one for the stage.

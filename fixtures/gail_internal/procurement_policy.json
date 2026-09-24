@@ -1,0 +1,38 @@
+{
+  "data_classification": "SAMPLE DATA for demonstration - your board-approved procurement policy plugs in here.",
+  "owner": "GAIL Finance - Risk Management Committee",
+  "winter_budget_delivered_usd_mmbtu": 22.0,
+  "budget_note": "Winter replacement-LNG budget approved in August (delivered Dahej).",
+  "risk_limit_p95_overrun_inr_crore": 800,
+  "risk_limit_note": "Worst realistic case (95th percentile) cost overrun vs budget must stay within this limit.",
+  "india_spot_premium_to_ttf_usd_mmbtu": 0.5,
+  "india_spot_premium_note": "JKM is licensed (Platts); India DES spot estimated as TTF + premium.",
+  "approver": "Director (Marketing)",
+  "approval_threshold_inr_crore": 500,
+  "sap": {
+    "system": "RISE with SAP S/4HANA Cloud (Project Navodaya)",
+    "document_type": "Purchase Requisition (NB) - LNG cargo",
+    "purchasing_org": "GAIL-MKTG-LNG",
+    "plant": "DAHJ - Dahej LNG receipt",
+    "material": "LNG-DES-DAHEJ",
+    "gl_account": "0000510100 - Gas purchase (imported LNG)",
+    "cost_center": "GAIL-MKTG-LNG-01"
+  },
+  "cargo_procurement_lead_time_days": 45,
+  "lead_time_note": "A DES spot cargo must be contracted about 6 weeks before its delivery month (loading, voyage, Dahej berth slot).",
+  "delegation_of_authority": [
+    {
+      "up_to_inr_crore": 500,
+      "approver": "Executive Director (LNG)"
+    },
+    {
+      "up_to_inr_crore": 5000,
+      "approver": "Director (Marketing)"
+    },
+    {
+      "up_to_inr_crore": null,
+      "approver": "Board of Directors"
+    }
+  ],
+  "delegation_note": "Sample delegation of financial powers for LNG purchases."
+}

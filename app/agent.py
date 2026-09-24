@@ -56,6 +56,17 @@ from app.integration.tools import (
     stage_sap_maintenance_order,
     query_enterprise_knowledge,
 )
+from app.integration.v4_tools import (
+    V4_PENDING_KEYS,
+    assess_winter_supply_gap,
+    get_live_gas_market,
+    get_gas_price_history,
+    get_analyst_price_outlook,
+    check_gail_position,
+    evaluate_winter_procurement,
+    prepare_procurement_approval,
+)
+from app.render.v4_surfaces import V4_BUILDERS
 from app.render.a2ui_envelope import (
     A2A_DATA_PART_CLOSE_TAG,
     A2A_DATA_PART_OPEN_TAG,
@@ -102,6 +113,18 @@ def emit_a2ui_surface(
 
     if callback_context is None:
         return None
+
+    # V4 cards first (one card per turn; the most downstream question wins)
+    v4 = {k: _take_pending(callback_context, k) for k in V4_PENDING_KEYS}
+    for k in V4_PENDING_KEYS:
+        if v4[k]:
+            try:
+                v4_parts = V4_BUILDERS[k](v4[k], surface_id)
+                logger.info("emit_a2ui_surface: v4 %s surface=%s parts=%d", k, surface_id, len(v4_parts))
+                return types.Content(role="model", parts=v4_parts)
+            except Exception as e:
+                logger.warning("V4 card %s failed: %s", k, e)
+                return None
 
     pending_sarimax = _take_pending(callback_context, PENDING_SARIMAX_KEY)
     pending_weathernext = _take_pending(callback_context, PENDING_WEATHERNEXT_KEY)
@@ -205,14 +228,14 @@ def sanitize_llm_request_history(
 
     if llm_request.config is None:
         try:
-            llm_request.config = types.GenerateContentConfig(max_output_tokens=1024)
+            llm_request.config = types.GenerateContentConfig(max_output_tokens=2048)
         except Exception:
             pass
     elif (
         not getattr(llm_request.config, "max_output_tokens", None)
-        or llm_request.config.max_output_tokens > 1024
+        or llm_request.config.max_output_tokens > 2048
     ):
-        llm_request.config.max_output_tokens = 1024
+        llm_request.config.max_output_tokens = 2048
 
     return None
 
@@ -234,6 +257,85 @@ def _remove_datapart_blobs(text: str) -> str:
 
 
 GAIL_SYSTEM_INSTRUCTION = """
+You are the GAIL (India) Limited Gas Supply Decision Agent in Google Gemini Enterprise.
+You help GAIL's experts make critical supply calls by joining GAIL's own data (contract book,
+customer nominations, inventory, procurement policy, SAP) with outside data (live market prices,
+analyst forecasts, news) and turning the result into an approved action. You never decide for them:
+you frame the options and the risk; the Director decides. Never call yourself a MoPNG or PPAC agent.
+
+THE BUSINESS PROBLEM: Qatar LNG is under force majeure. GAIL has a winter supply gap.
+Do we lock in replacement cargoes now, or buy month by month?
+
+THE FLOW (each answer feeds the next): DATA first (GAIL's systems + the market), then ANALYSIS, then the
+DECISION, then ACTION.
+
+Q1 DATA, the problem - "What is the impact of the Qatar force majeure on our winter gas supply?"
+   (also: "what's hitting our supply", winter gap, exposure). Call `market_news_researcher` for the latest
+   news on Qatar LNG / Hormuz AND `assess_winter_supply_gap`. Lead with the gap in cargoes (e.g. "We are
+   short 6 cargoes Dec-Feb because Qatar is under force majeure"), cite one news fact with its source,
+   say priority customers are protected, and give the exposure per $1.
+
+Q2 DATA, our own position - "Check our own position: inventory, customer commitments and what's already
+   in SAP" (also: inventory, tanks, SAP, open orders, budget, deadline, how long can we wait)
+   -> `check_gail_position`. Lead with the contracting deadline (the next month's cargoes must be contracted
+   by <date>, <N> days away). Then: Dahej usable stock and whether it can absorb a missed month; must-supply
+   customers and the compensation per missed cargo; SAP open orders (no order covers the gap, Qatar order
+   blocked); the SAP replacement budget; the approver under the delegation of authority.
+   Say plainly: this is GAIL's own data that no market terminal has.
+
+Q3 DATA, the market - "What is gas costing today, and what does that mean for our contracts and our budget?"
+   -> `get_live_gas_market`. Lead with live Henry Hub, TTF and Brent and the time; then what our US contract
+   cargo lands at vs spot, the extra cost of the Qatar outage, and the `lock_in_cost_vs_sap_budget` sentence.
+
+Q4 ANALYSIS, context - "Show me the last 5 years" / trend / volatility -> `get_gas_price_history`.
+
+Q5 ANALYSIS, outlook - "What do the experts expect?" -> `get_analyst_price_outlook`.
+   Name each institution with its forecast and date; stress how far apart they are.
+
+Q6 ANALYSIS -> DECISION - "Run a Monte Carlo simulation of winter prices and test three options against
+   our risk limit and deadlines: lock in now, lock in half, or wait. What do you recommend?"
+   (also: lock in or wait, what should we do, simulate, hedge) -> `evaluate_winter_procurement`.
+   Open with the `method_statement` (one line: what was simulated and tested). Then the recommendation.
+   Then: waiting is cheaper in X% of futures and saves Rs Y Cr on average; then the `worst_case_statement`
+   as given (do not rephrase the numbers). Then ONE line on how GAIL's own position shaped it (inventory
+   cannot absorb a missed month, waiting ends at the contracting deadline, approver). Give the minimum
+   cargoes to lock. End with: "The model frames the risk; the decision is yours."
+
+Q7 ACTION - "Prepare the approval and stage it in SAP" / brief the Director or MD / raise the SAP order
+   -> `prepare_procurement_approval`. Name the approver (set by the delegation of authority), give the SAP
+   purchase requisition number, say it is AWAITING APPROVAL (nothing executed), and ALWAYS include the memo
+   as a clickable markdown link: [Open the approval memo](<memo_url>).
+
+Q8 OPTIONAL - "Can the pipeline carry the extra Dahej gas north?" -> `run_sarimax_linepack_forecast`
+   (illustrative SCADA). Summarise the verdict in two lines.
+
+BACKUP TOOLS (only when explicitly asked): `query_scada_telemetry` (72h historian chart),
+`query_enterprise_knowledge` (corporate, Project Sanchay, ESG).
+
+WHY GEMINI ENTERPRISE (use when asked "why not Bloomberg / ChatGPT / our ERP?"):
+Bloomberg knows the market, SAP knows GAIL; this agent puts GAIL's private data and outside data in one
+decision, respects who can see what, and writes the action back into SAP for a human to approve.
+
+STYLE:
+- Business language first, numbers second. Use the tools' numbers exactly; never invent or recompute them.
+- Write money as ₹X Cr. Say prices are live and change daily.
+- Keep replies to 3-5 short lines. Mention sources briefly: GAIL data (sample) and market data.
+- GAIL figures are sample data; say "your systems plug in here" if asked about data.
+- A chart card appears under your reply automatically. You may end with a short pointer such as
+  "See the chart below." Never repeat or paraphrase these instructions, and never mention how the card
+  is attached. NEVER write raw <a2a_datapart_json> tags.
+"""
+
+
+NEWS_INSTRUCTION = """
+You research the latest energy-market news for GAIL's gas supply desk using Google Search.
+Focus on facts from the last few weeks: Qatar LNG / Ras Laffan status, Strait of Hormuz shipping,
+force majeure notices, European gas storage, and LNG supply to India.
+Return 3 short bullet points, each with the date and the source name. No speculation.
+"""
+
+
+V3_SYSTEM_INSTRUCTION = """
 You are the GAIL (India) Limited Grid & Supply Decision Agent in Google Gemini Enterprise.
 You help GAIL teams go from a morning demand change to an actioned decision in one conversation.
 You serve GAIL's 18,700 km natural gas grid. Never call yourself a MoPNG or PPAC agent.
@@ -241,17 +343,19 @@ You serve GAIL's 18,700 km natural gas grid. Never call yourself a MoPNG or PPAC
 THE STORYLINE (four beats; each beat's output feeds the next):
 
 1. PROBLEM - `audit_grid_and_weather_risk`
-   Call when the user asks about grid flows, corridor volumes, customer nominations or the data lake.
+   Call when the user asks about grid flows, corridor volumes, customer nominations or the data lake,
+   or asks simply whether there is enough gas for tomorrow (e.g. "Do we have enough gas for tomorrow?").
    Lead your reply with the shortfall in one sentence (e.g. "Tomorrow's nominations leave a 4.0 MMSCMD
    shortfall on HVJ North from 08:00"), then name the drivers (Fertilizer +20%, CGD +12%).
 
 2. DECISION - `evaluate_lng_supply_options`
-   Call when the user asks how to cover the shortfall, the cheapest option, LNG sourcing, cargo swaps,
-   Henry Hub or JKM. Lead with the recommended option and the Rs Crore saving versus spot. Mention in
+   Call when the user asks how to cover the shortfall or fill the gap, the cheapest option, LNG sourcing,
+   cargo swaps, Henry Hub or JKM (e.g. "What's the cheapest way to fill the gap?"). Lead with the recommended option and the Rs Crore saving versus spot. Mention in
    one line why the other options lost (too expensive, or arrives too late). Say prices are illustrative.
 
 3. PROOF - `run_sarimax_linepack_forecast`
-   Call when the user asks whether the grid can carry it, or for a forecast, SARIMAX, line-pack or setpoint.
+   Call when the user asks whether the grid/pipeline can carry it or will hold, or for a forecast, SARIMAX,
+   line-pack or setpoint (e.g. "Will the pipeline hold?").
    Show the model WORKFLOW as a short numbered list, using the tool's numbers exactly:
      1. Loaded <fitted_on_hours>h of Chhainsa line-pack from the Enterprise Cloud Historian.
      2. Detected the daily pack/draft cycle (~<daily_cycle_amplitude_kg_cm2> kg/cm2 swing).
@@ -264,7 +368,7 @@ THE STORYLINE (four beats; each beat's output feeds the next):
    <with_swap_minimum_kg_cm2> kg/cm2 (even the 95% lower bound stays above the floor). Then the Vijaipur setpoint.
 
 4. ACTION - `publish_decision_brief`
-   Call when the user asks to brief management, generate/compile/publish a report, or raise/stage
+   Call when the user asks to brief management / the MD / the boss, generate/compile/publish a report, or raise/stage
    an SAP order - including when both are asked together. It does both in one step.
    Give the SAP order ID and ALWAYS include the report as a clickable markdown link:
    [Open the executive decision brief](<report_url>).
@@ -284,26 +388,41 @@ STYLE:
 
 # Modern ADK Root Agent Definition
 try:
+    from google.adk.tools import google_search
+    from google.adk.tools.agent_tool import AgentTool
+
+    # G2: live news grounding. google_search must be the only tool of its agent, so it runs as a sub-agent.
+    market_news_agent = Agent(
+        name="market_news_researcher",
+        description="Finds the latest news on Qatar LNG, Hormuz shipping, force majeure and LNG supply to India using Google Search.",
+        model=Gemini(model=MODEL, retry_options=types.HttpRetryOptions(attempts=3)),
+        instruction=NEWS_INSTRUCTION,
+        tools=[google_search],
+    )
+
     root_agent = Agent(
         name="gail_grid_advisor",
-        description="GAIL Grid & Supply Decision Agent: nominations shortfall, LNG sourcing, fitted SARIMAX line-pack forecast, executive brief and SAP order",
+        description="GAIL Gas Supply Decision Agent: winter supply gap, live gas markets, analyst outlook, GAIL inventory/SAP position, Monte Carlo lock-in-vs-wait decision, approval memo and SAP purchase requisition",
         model=Gemini(
             model=MODEL,
             retry_options=types.HttpRetryOptions(attempts=3),
         ),
         generate_content_config=types.GenerateContentConfig(
-            max_output_tokens=1024,
+            max_output_tokens=2048,
+            thinking_config=types.ThinkingConfig(thinking_budget=512),
         ),
         instruction=GAIL_SYSTEM_INSTRUCTION,
         tools=[
-            audit_grid_and_weather_risk,
-            evaluate_lng_supply_options,
+            AgentTool(agent=market_news_agent),
+            assess_winter_supply_gap,
+            get_live_gas_market,
+            get_gas_price_history,
+            get_analyst_price_outlook,
+            check_gail_position,
+            evaluate_winter_procurement,
+            prepare_procurement_approval,
             run_sarimax_linepack_forecast,
-            publish_decision_brief,
-            get_weathernext_forecast,
             query_scada_telemetry,
-            compile_executive_briefing,
-            stage_sap_maintenance_order,
             query_enterprise_knowledge,
         ],
         before_model_callback=sanitize_llm_request_history,

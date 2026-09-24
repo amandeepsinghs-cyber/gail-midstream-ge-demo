@@ -1,0 +1,33 @@
+{
+  "data_classification": "SAMPLE DATA for demonstration - structure mirrors RISE with SAP S/4HANA (MM purchasing, FI funds management); your SAP data plugs in here.",
+  "owner": "RISE with SAP S/4HANA (Project Navodaya)",
+  "as_of": "2026-09-24",
+  "open_purchase_orders_winter": [
+    {
+      "po": "4500187231",
+      "vendor": "US LNG portfolio (LT-US-01)",
+      "description": "Dec-Feb contract cargoes, destination Dahej",
+      "cargoes": 6,
+      "status": "Released",
+      "covers_gap": false
+    },
+    {
+      "po": "4500187316",
+      "vendor": "Term portfolio (TERM-PORTFOLIO-02)",
+      "description": "Dec-Feb term cargoes",
+      "cargoes": 9,
+      "status": "Released",
+      "covers_gap": false
+    },
+    {
+      "po": "4500186904",
+      "vendor": "QatarEnergy (LT-QATAR-01)",
+      "description": "Dec-Feb long-term cargoes",
+      "cargoes": 6,
+      "status": "Blocked - force majeure",
+      "covers_gap": false
+    }
+  ],
+  "replacement_budget_committed_inr_crore": 0,
+  "funds_centre": "GAIL-MKTG-LNG"
+}
