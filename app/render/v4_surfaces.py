@@ -7,6 +7,7 @@ from typing import Any, Dict, List
 
 from google.genai import types
 
+from app.analytics import winter_decision as wd
 from app.render import v4_charts as ch
 from app.render.a2ui_envelope import wrap_a2ui_part
 from app.render.a2ui_lifecycle import build_create_surface, build_update_components
@@ -74,7 +75,7 @@ def build_history_surface(p: Dict[str, Any], surface_id: str) -> List[types.Part
             f"• Today TTF **${s['ttf_today_usd_mmbtu']:.2f}** vs Henry Hub ${s['henry_hub_today']:.2f}: spread "
             f"**${s['spread_today_usd_mmbtu']:.2f}** (5-year average ${s['spread_5y_average_usd_mmbtu']:.2f})\n"
             f"• Measured TTF volatility **{s['ttf_annual_volatility_pct']:.0f}% a year**. That is the risk we simulate next.")
-    return _card(surface_id, "hist", "📉 How did we get here? 5 years of gas prices", s["period"],
+    return _card(surface_id, "hist", "📉 5 years of gas prices and what moved them", s["period"],
                  [ch.history_chart(p["rows"])], body, p["sources"])
 
 
@@ -115,11 +116,10 @@ def build_strategy_surface(p: Dict[str, Any], surface_id: str) -> List[types.Par
     s, g = p["strategy"], p["gap"]
     rec = s["recommended_label"]
     budget_ttf = s["budget_usd_mmbtu"] - (s["months"][0]["lock_in_usd_mmbtu"] - p["live"]["winter_futures"][0]["TTF_usd_mmbtu"])
-    lines = [f"{'✅' if x['id'] == s['recommended_id'] else ('🟢' if x['within_risk_limit'] else '🔴')} {x['label']}: expected "
-             f"**₹{x['expected_inr_crore']:,.0f} Cr**, worst case ₹{x['p95_inr_crore']:,.0f} Cr" for x in s["strategies"]]
+    lines = [f"{'✅' if x['id'] == s['recommended_id'] else ('🟢' if x['within_risk_limit'] else '🔴')} "
+             f"{wd.strategy_line(x, s['risk_limit_inr_crore'])}" for x in s["strategies"]]
     body = (f"**Recommendation: {rec}** ({s['total_cargoes']} cargoes).\n"
-            f"• Waiting is cheaper in **{s['prob_wait_cheaper_than_lock_pct']:.0f}% of futures** (saves ₹{s['expected_saving_if_wait_inr_crore']:,.0f} Cr on average), "
-            f"but in a bad winter it costs **₹{s['p95_protection_vs_wait_inr_crore']:,.0f} Cr more**, far beyond GAIL's ₹{s['risk_limit_inr_crore']:,.0f} Cr risk limit.\n"
+            f"• {wd.risk_statement(s)}\n"
             + "\n".join(lines) +
             f"\n• Minimum to lock within the risk limit: **{s['min_cargoes_to_lock']} of {s['total_cargoes']} cargoes**. "
             f"Priority customers covered: {'yes' if g['priority_customers_protected'] else 'no'}.\n"

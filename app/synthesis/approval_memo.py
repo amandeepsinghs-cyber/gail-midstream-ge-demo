@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
 
+from app.analytics import winter_decision as wd
 from app.integration.gcs_connector import publish_executive_report_to_gcs
 from app.render import v4_charts as ch
 
@@ -75,8 +76,7 @@ tr.rec{{background:#ECFDF5;font-weight:bold}}.chart{{width:100%;margin:8px 0}}.m
 
 <h2>1. Decision requested</h2>
 <div class="bluf"><b>Approve: {html.escape(s['recommended_label'])} for {pr['cargoes']} replacement cargoes (Dec–Feb), indicative {_money(pr['total_indicative_inr_crore'])}.</b><br>
-Waiting is cheaper in {s['prob_wait_cheaper_than_lock_pct']:.0f}% of simulated futures (saves {_money(s['expected_saving_if_wait_inr_crore'])} on average),
-but in a bad winter it costs {_money(s['p95_protection_vs_wait_inr_crore'])} more, beyond the board risk limit of {_money(s['risk_limit_inr_crore'])}.
+{html.escape(wd.risk_statement(s))}
 Priority customers (fertilizer, city gas) stay covered.</div>
 
 <h2>2. The problem (🏢 GAIL data)</h2>
@@ -91,7 +91,7 @@ Brent ${live['brent_usd_bbl']:.1f}, ₹{live['usdinr']:.2f}/$. Each of our US co
 <div id="market" class="chart"></div>
 
 <h2>4. Options and risk (Monte Carlo, {s['paths']:,} paths)</h2>
-<table><tr><th>Strategy</th><th>Expected cost</th><th>5–95% range</th><th>Worst-case overrun vs budget</th><th>Board risk limit</th></tr>{rows}</table>
+<table><tr><th>Strategy</th><th>Expected cost</th><th>5–95% range</th><th>Bad-winter (1 in 20) overrun vs budget</th><th>Board risk limit</th></tr>{rows}</table>
 <div id="fan" class="chart"></div><div id="strat" class="chart"></div>
 <p class="meta">Method: TTF volatility {s['ttf_annual_vol_pct']:.0f}%/yr measured on {s['history_weeks']} weeks of history; paths centred on the 2027 analyst consensus
 (${s['centred_on_consensus_ttf_usd_mmbtu']}/MMBtu); lock-in at live winter futures; budget ${s['budget_usd_mmbtu']}/MMBtu delivered ({_money(s['budget_inr_crore'])}); seed {s['seed']}.

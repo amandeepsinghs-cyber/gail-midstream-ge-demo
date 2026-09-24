@@ -269,6 +269,46 @@ def evaluate_strategies(live: Dict[str, Any], history_rows: List[Dict[str, Any]]
     }
 
 
+def _vs_budget(overrun: float) -> str:
+    return f"₹{overrun:,.0f} Cr over budget" if overrun >= 0 else f"₹{-overrun:,.0f} Cr under budget"
+
+
+def _vs_limit(overrun: float, limit: float) -> str:
+    if overrun <= limit:
+        return f"inside the ₹{limit:,.0f} Cr risk limit"
+    times = int(overrun // limit)
+    return (f"more than {times}× our ₹{limit:,.0f} Cr risk limit" if times >= 2
+            else f"above our ₹{limit:,.0f} Cr risk limit")
+
+
+def strategy_line(x: Dict[str, Any], limit: float) -> str:
+    """One option in plain words. All options are measured the same way: over budget in a bad winter
+    (1 in 20, i.e. P95) vs the risk limit. A fully fixed-price option has one number, not two."""
+    over = x["p95_overrun_vs_budget_inr_crore"]
+    if x["p95_inr_crore"] == x["expected_inr_crore"]:
+        return (f"{x['label']}: fixed at **₹{x['expected_inr_crore']:,.0f} Cr**, no price risk · "
+                f"{_vs_budget(over)}, {_vs_limit(over, limit)}")
+    return (f"{x['label']}: expected ₹{x['expected_inr_crore']:,.0f} Cr · bad winter (1 in 20) "
+            f"₹{x['p95_inr_crore']:,.0f} Cr · {_vs_budget(over)} in a bad winter, {_vs_limit(over, limit)}")
+
+
+def risk_statement(s: Dict[str, Any]) -> str:
+    """The Q6 risk sentence, phrased once so the card and the agent's reply say the same thing."""
+    limit = s["risk_limit_inr_crore"]
+    by_id = {x["id"]: x for x in s["strategies"]}
+    wait, rec = by_id["WAIT"], by_id[s["recommended_id"]]
+    wait_over, rec_over = wait["p95_overrun_vs_budget_inr_crore"], rec["p95_overrun_vs_budget_inr_crore"]
+    text = (f"Waiting is cheaper in {s['prob_wait_cheaper_than_lock_pct']:.0f} of 100 simulated winters and saves "
+            f"₹{s['expected_saving_if_wait_inr_crore']:,.0f} Cr on average. But in a bad winter (1 in 20), waiting puts us "
+            f"{_vs_budget(wait_over)}, {_vs_limit(wait_over, limit)}.")
+    if rec["id"] != "WAIT":
+        fixed = rec["p95_inr_crore"] == rec["expected_inr_crore"]
+        name = {"LOCK_ALL": "Locking in now", "HEDGE_HALF": "Locking in half now"}.get(rec["id"], rec["label"])
+        text += (f" {name} {'is fixed at' if fixed else 'costs at most'} ₹{rec['p95_inr_crore']:,.0f} Cr"
+                 f"{'' if fixed else ' in a bad winter'}, {_vs_budget(rec_over)}, {_vs_limit(rec_over, limit)}.")
+    return text
+
+
 def analysts_inside_fan(fan: List[Dict[str, Any]], forecasts: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Sanity check: TTF analyst forecasts vs the simulated P5–P95 fan at their period."""
     inside, total, detail = 0, 0, []

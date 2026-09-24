@@ -26,12 +26,12 @@
 
 | # | Stage | Paste | Point at | Say |
 |---|---|---|---|---|
-| 1 | **Data:** the problem | What is the impact of the Qatar force majeure on our winter gas supply? | **6 cargoes short**, **₹184 Cr per $1** | "It read our contract book and today's news together. We are six cargoes short this winter." |
+| 1 | **Data:** the problem | What is the impact of the Qatar force majeure on our winter gas supply? | **6 cargoes short**, **extended to early November**, **₹184 Cr per $1** | "It read our contract book and today's news together. Qatar has extended the force majeure, and we are six cargoes short this winter." |
 | 2 | **Data:** our own books | Check our own position: inventory, customer commitments. | ⏱️ **Deadline: 17 Oct (23 days)**, tanks can't cover a missed month | "Now our own systems: tanks, customers, open orders, budget. No market terminal has this. And there's a deadline: we can only wait 23 days for the December cargoes." |
 | 3 | **Data:** the market | What is gas costing today, and what does that mean for our contracts and our budget? | US cargo **~$10.9** vs spot **~$24.9**; lock-in **₹540 Cr over budget** | "Live prices, applied to **our** contracts and **our** SAP budget. Locking in today costs more than we budgeted." |
 | 4 | **Analysis:** context | How have gas prices moved over the last 5 years, and what drove them? | The 2022 and 2026 spikes | "This market swings hard. That is what makes waiting risky." |
 | 5 | **Analysis:** outlook | What do the experts expect? | Consensus below today, wide spread | "Experts expect prices to fall, but they disagree by how much. So waiting is a bet." |
-| 6 | **Analysis → Decision** | Run a Monte Carlo simulation of winter prices and test three options against our risk limit and deadlines: lock in now, lock in half, or wait. What do you recommend? | **10,000 simulated futures**, **lock in 6 of 6**, worst case vs **₹800 Cr limit** | "This isn't gut feel. It simulated 10,000 possible winters and tested each option against our risk limit and deadlines. Waiting might save a little, but the downside breaks our limit. Recommendation: lock in now. The Director still decides." |
+| 6 | **Analysis → Decision** | Run a Monte Carlo simulation of winter prices and test three options against our risk limit and deadlines: lock in now, lock in half, or wait. What do you recommend? | Waiting cheaper in **~6 of 10 winters**; in a **bad winter (1 in 20)** it goes **~₹2,900 Cr over budget** vs the **₹800 Cr limit**; lock-in **fixed**, inside the limit | "This isn't gut feel. It simulated 10,000 winters. Waiting usually saves a little, but in a bad winter it blows through our risk limit several times over. Locking in fixes the price, inside the limit. Recommendation: lock in now. The Director still decides." |
 | 7 | **Action** | Prepare the approval and stage it in SAP. | Approver, memo link, **SAP: AWAITING APPROVAL** | "It picked the right approver from our delegation rules, wrote the memo and staged the order in SAP. Nothing moves until a human approves." |
 
 **Close:**
@@ -45,7 +45,7 @@
 ## 5. Plain-English words
 - **TTF / Henry Hub / Brent** → "European, US and oil benchmark prices."
 - **Force majeure** → "Qatar legally can't deliver."
-- **Monte Carlo** → "we simulate 10,000 possible winters and see how each option does." **Worst case (P95)** → "the worst 1 in 20."
+- **Monte Carlo** → "we simulate 10,000 possible winters and see how each option does." **Bad winter (P95)** → "the worst 1 in 20."
 - **Lead time** → "you have to order a cargo about six weeks before it arrives."
 - **Delegation of authority** → "who is allowed to sign for a purchase of this size."
 
@@ -55,6 +55,8 @@
 |---|---|
 | Is this real GAIL data? | "Market data is live. The contracts, inventory, SAP orders and policy are sample data in a data lake. Plug in the real systems and the same flow runs." |
 | News says Qatar restarts in November | "Maybe. We can't plan a winter on maybe, and the December deadline is in 23 days. That's why we size the risk." |
+| Why does 'lock in' show one number? | "Because locking in fixes the price. It costs the same in every one of the 10,000 winters. That certainty is what we're buying." |
+| Why not hedge / buy insurance for the bad winter? | "We can: call options or a price cap, under our commodity risk policy. Two reasons it doesn't change today's call. At ~90% volatility the premium is roughly ₹400–650 Cr (indicative), more than waiting saves on average. And a hedge protects the price, not the gas: we still need a cargo by the deadline. Worth a follow-up study." |
 | Is it always 'lock in'? | "No. It depends on today's prices, our risk limit and our deadlines. Change the limit and it can say 'lock in half'." |
 | Why not ChatGPT or Bloomberg? | Ask the agent: **"Why do we need Gemini Enterprise for this?"** |
 | Will it act on its own? | "No. It stages the SAP order; a human approves." |

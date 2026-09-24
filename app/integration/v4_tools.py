@@ -271,20 +271,15 @@ def evaluate_winter_procurement(tool_context: Optional[ToolContext] = None) -> D
                "note": SAMPLE_NOTE}
     _stash(tool_context, PENDING_STRATEGY_KEY, payload)
     nd = p["next_deadline"]
-    wait_overrun = next(x for x in s["strategies"] if x["id"] == "WAIT")["p95_overrun_vs_budget_inr_crore"]
     return {
         "method_statement": (f"I simulated {s['paths']:,} winter price paths from live TTF futures, {s['ttf_annual_vol_pct']:.0f}% volatility "
                              f"measured over {s['history_weeks']} weeks, and the analyst consensus, then tested three options "
                              f"(lock in now, lock in half, wait until each contracting deadline) against GAIL's ₹{s['risk_limit_inr_crore']:,.0f} Cr risk limit."),
         "cargoes": s["total_cargoes"],
-        "strategies": {x["label"]: {"expected_inr_crore": x["expected_inr_crore"], "worst_case_p95_inr_crore": x["p95_inr_crore"],
-                                    "within_board_risk_limit": x["within_risk_limit"]} for x in s["strategies"]},
+        "strategies": [wd.strategy_line(x, s["risk_limit_inr_crore"]) for x in s["strategies"]],
         "prob_waiting_is_cheaper_pct": s["prob_wait_cheaper_than_lock_pct"],
         "expected_saving_if_wait_inr_crore": s["expected_saving_if_wait_inr_crore"],
-        "extra_worst_case_cost_if_wait_inr_crore": s["p95_protection_vs_wait_inr_crore"],
-        "worst_case_statement": (f"In the worst 5% of futures, waiting costs ₹{s['p95_protection_vs_wait_inr_crore']:,.0f} Cr more than locking in; "
-                                 f"that is ₹{wait_overrun:,.0f} Cr over budget, "
-                                 f"against a board risk limit of ₹{s['risk_limit_inr_crore']:,.0f} Cr."),
+        "worst_case_statement": wd.risk_statement(s),
         "budget_inr_crore": s["budget_inr_crore"],
         "board_risk_limit_p95_overrun_inr_crore": s["risk_limit_inr_crore"],
         "recommendation": s["recommended_label"],
