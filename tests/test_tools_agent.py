@@ -14,8 +14,9 @@ from app.agent import GailPipelineAgent
 def test_tool_act1_grid_audit():
     res = audit_grid_and_weather_risk()
     assert res.network_summary.total_network_km == 18700.0
-    assert len(res.environmental_alerts) >= 1
-    assert "Gauna-Bawana" in res.environmental_alerts[0].location_name
+    assert len(res.environmental_alerts) >= 2
+    assert "Nominations" in res.environmental_alerts[0].location_name
+    assert res.demand_shortfall["shortfall_mmscmd"] == 4.0
     assert "a2ui_version" in res.a2ui_map_payload
 
 def test_tool_act2_scada():
@@ -28,12 +29,13 @@ def test_tool_act2_scada():
 def test_tool_act3_sarimax():
     res = run_sarimax_linepack_forecast("Chhainsa_CS", 24)
     assert res.setpoint_recommendation.fuel_gas_savings_scm_day == 18500.0
+    assert res.pressure_deficit_hour_ahead == 14
     assert res.setpoint_recommendation.throughput_adjustment_pct == 3.8
     assert res.a2ui_forecast_chart["card_type"] == "SARIMAX_PREDICTIVE_ADVISORY"
 
 def test_tool_act4_executive_report():
     report = compile_executive_briefing()
-    assert "Daily Line-Pack" in report.report_title
+    assert "Supply Decision" in report.report_title
     assert report.compiled_html_path.endswith(".html")
     assert report.project_sanchay_roi["annualized_inr_crores"] == 16.88
 
@@ -60,7 +62,6 @@ def test_agent_orchestrator_all_acts():
     # Act 1
     r1 = agent.execute_prompt("Gemini, initialize a grid health and risk audit across HVJ")
     assert "ACT 1" in r1["act"]
-    assert "Gauna-Bawana" in r1["narrative"]
     
     # Weather AI: WeatherNext 3
     rw = agent.execute_prompt("What is the WeatherNext 3 forecast for the Yamuna River crossing?")
@@ -77,6 +78,13 @@ def test_agent_orchestrator_all_acts():
     r3 = agent.execute_prompt("Execute a 24-hour predictive SARIMAX demand forecast for Chhainsa")
     assert "ACT 3" in r3["act"]
     assert "+3.8%" in r3["narrative"]
+    assert "T+14h" in r3["narrative"]
+
+    # Beats 2 and 4
+    rl = agent.execute_prompt("What's the cheapest way to cover that shortfall?")
+    assert "BEAT 2" in rl["act"]
+    rd = agent.execute_prompt("Brief management and raise the SAP order")
+    assert "BEAT 4" in rd["act"]
     
     # Act 4
     r4 = agent.execute_prompt("Compile this grid audit and SARIMAX forecast into an official Executive Briefing")

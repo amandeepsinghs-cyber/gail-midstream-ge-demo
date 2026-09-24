@@ -53,7 +53,8 @@ class ExecutiveReportCompiler:
         scada_summary: Dict[str, Any],
         sarimax_results: Dict[str, Any],
         weathernext_data: Dict[str, Any] = None,
-        sap_order_status: Dict[str, Any] = None
+        sap_order_status: Dict[str, Any] = None,
+        storyline: Dict[str, Any] = None,
     ) -> str:
         report_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         period_date = datetime.now().strftime("%Y-%m-%d")
@@ -63,6 +64,76 @@ class ExecutiveReportCompiler:
         precip_p90 = weathernext_metrics.get("cumulative_precipitation_p90_mm", 115.6)
         peak_temp = weathernext_metrics.get("peak_temperature_c", 41.9)
 
+        story = storyline
+        if story is None:
+            from app import scenario
+            story = scenario.storyline()
+        sf, lng, fc = story["shortfall"], story["lng"], story["forecast"]
+        sap = sap_order_status or {}
+        wo_id = sap.get("work_order_id", "pending")
+        wo_hash = sap.get("audit_hash", "-")
+        sp = fc["setpoint_recommendation"]
+        breach_h = fc.get("pressure_deficit_hour_ahead")
+        breach_ts = (fc.get("pressure_deficit_timestamp") or "")[11:16]
+        floor = fc.get("critical_pressure_threshold_kg_cm2", 76.0)
+
+        decision_html = f"""
+        <div class="alert-box" style="border-left-color: var(--gail-green); background: var(--gail-green-bg);">
+            <div class="alert-title" style="color: var(--gail-green);">DECISION ON ONE PAGE</div>
+            <div class="alert-desc">
+                <table class="data-table" style="margin-top:8px;">
+                    <tbody>
+                        <tr><td><strong>1 · Problem</strong></td><td>Revised nominations (Fertilizer +{sf['fertilizer_change_pct']:.0f}%, CGD +{sf['cgd_change_pct']:.0f}%) create a <strong>{sf['shortfall_mmscmd']} MMSCMD shortfall</strong> on {sf['segment']} from {sf['starts_at'][11:16]} IST.</td></tr>
+                        <tr><td><strong>2 · Decision</strong></td><td><strong>{lng['recommended_option_label']}</strong> at ${lng['recommended_delivered_cost_usd_mmbtu']:.2f}/MMBtu delivered Dahej, <strong>₹{lng['saving_vs_spot_inr_crore']} Cr cheaper</strong> than a spot cargo (${lng['saving_vs_spot_usd_mmbtu']:.2f}/MMBtu × {lng['cargo_size_mmbtu']/1e6:.1f} TBtu).</td></tr>
+                        <tr><td><strong>3 · Proof</strong></td><td>Fitted {fc['model_type']}: without action Chhainsa breaches the {floor:.1f} kg/cm² floor at <strong>T+{breach_h}h ({breach_ts} IST)</strong>, falling to {fc['minimum_predicted_pressure_kg_cm2']} kg/cm². With the swap it holds at <strong>≥ {fc['with_swap_minimum_kg_cm2']} kg/cm²</strong>.</td></tr>
+                        <tr><td><strong>4 · Action</strong></td><td>SAP order <strong>{wo_id}</strong>: Vijaipur throughput +{sp['throughput_adjustment_pct']}% ({sp['current_vijaipur_throughput_mmscmd']} → {sp['recommended_vijaipur_throughput_mmscmd']} MMSCMD) at T+{sp['lead_time_hours']}h; Dahej send-out +{lng['dahej_sendout_increase_mmscmd']} MMSCMD.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>"""
+
+        opt_rows = ""
+        for o in lng["options"]:
+            row_cls = ' class="highlight-row"' if o["recommended"] else ""
+            label = f"<strong>{o['label']} (Recommended)</strong>" if o["recommended"] else o["label"]
+            verdict = "Feasible" if o["feasible"] else "Not feasible"
+            opt_rows += (
+                f"<tr{row_cls}><td>{label}</td><td>{o['formula']}</td>"
+                f"<td>${o['delivered_cost_usd_mmbtu']:.2f}</td><td>{o['arrival_days']} days</td>"
+                f"<td>{verdict} — {o['screen_reason']}</td></tr>"
+            )
+        lng_html = f"""
+        <div class="section-title">
+            <span>Commercial Decision: LNG Sourcing to Cover the Shortfall</span>
+            <span style="font-size: 13px; font-weight: 700; color: var(--gail-green);">SAVING vs SPOT: ₹{lng['saving_vs_spot_inr_crore']} CR</span>
+        </div>
+        <div class="table-title">Table L.1: Delivered Cost at {lng['delivery_terminal']} (USD/MMBtu) · {lng['as_of']} · {lng['disclaimer']}</div>
+        <table class="data-table">
+            <thead><tr><th>Option</th><th>Formula</th><th>Delivered cost</th><th>Arrival</th><th>Timing screen</th></tr></thead>
+            <tbody>{opt_rows}</tbody>
+        </table>
+        <p style="font-size:14px;"><strong>Execution:</strong> {lng['execution_plan']} The cargo covers the shortfall for about {lng['cargo_covers_days']:.0f} days.</p>"""
+
+        pick = [1, 3, 6, 9, 12, 14, 18, 24]
+        fc_rows = ""
+        for r in fc["forecast_records"]:
+            if r["hour_ahead"] not in pick:
+                continue
+            is_breach = r["hour_ahead"] == breach_h
+            state = r["status"]
+            color = "#DC2626" if state == "BREACH" else ("#B45309" if state == "WATCH" else "#065F46")
+            row_cls = ' class="highlight-row"' if is_breach else ""
+            tag = " (breach)" if is_breach else ""
+            fc_rows += (
+                f"<tr{row_cls}><td>T+{r['hour_ahead']}h{tag}</td>"
+                f"<td>{r['timestamp'][11:16]} IST</td>"
+                f"<td>{r['predicted_linepack_kg_cm2']:.2f}</td>"
+                f"<td>[{r['conf_interval_95_lower']:.2f} – {r['conf_interval_95_upper']:.2f}]</td>"
+                f"<td><strong>{r['with_swap_linepack_kg_cm2']:.2f}</strong></td>"
+                f"<td>{r['scheduled_offtake_mmscmd']:.1f}</td>"
+                f"<td><span style='color:{color}; font-weight:800;'>{state}</span></td></tr>"
+            )
+
         ashoka_crest_src = self._get_ashoka_crest()
         gail_emblem_src = self._get_gail_emblem()
 
@@ -71,7 +142,7 @@ class ExecutiveReportCompiler:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GAIL (India) Limited · Daily Line-Pack & Grid Integrity Sovereign Executive Briefing</title>
+    <title>GAIL (India) Limited · Daily Line-Pack & Supply Decision Executive Briefing</title>
     <style>
         :root {{
             --gail-orange: #E65100;
@@ -497,7 +568,7 @@ class ExecutiveReportCompiler:
         <!-- Hero Title -->
         <div class="report-title-hero">
             <div class="draft-header-tag">⚠️ SOVEREIGN OPERATIONAL RECKONER</div>
-            <div class="report-main-title">Daily Line-Pack & Grid Integrity Briefing</div>
+            <div class="report-main-title">Daily Line-Pack & Supply Decision Briefing</div>
             <div class="report-sub-title">Hazira-Vijaipur-Jagdishpur (HVJ) & MNJPL Operational Optimization Outlook</div>
             <div class="report-meta-line">Generated on: <strong>{report_timestamp} IST</strong> · Governing Platform: <strong>Google Gemini Enterprise & ADK</strong></div>
         </div>
@@ -505,56 +576,60 @@ class ExecutiveReportCompiler:
         <!-- Institutional Mandate & Preamble -->
         <div class="preamble-card">
             <p><strong>GAIL (India) Limited</strong>, a Maharatna CPSE under the Ministry of Petroleum & Natural Gas (MoPNG), operates India's principal natural gas transmission network spanning over 18,700 km. The National Gas Management Centre (NGMC) exercises real-time supervisory control over critical compressor complexes (Vijaipur, Chhainsa, Hazira, Jhabua, Dadri) transmitting ~122 MMSCMD across fertilizer, power, CGD, and industrial anchors.</p>
-            <p>This <em>Daily Line-Pack & Grid Integrity Executive Briefing</em> synthesizes Yokogawa FAST/TOOLS SCADA telemetry, Siemens Remote Diagnostic Services (RDS) turbine thermodynamic logs, Google DeepMind WeatherNext 3 probabilistic hazard forecasts, and econometric SARIMAX linepack depletion curves. Optimal compressor throughput setpoints are staged directly into RISE with SAP S/4HANA Cloud (Project Navodaya) under the fuel minimization mandate of Project Sanchay.</p>
+            <p>This <em>Daily Line-Pack & Supply Decision Briefing</em> connects one morning's decision end to end: revised customer nominations from GMS, an LNG sourcing comparison priced with fixed formulas, a SARIMAX line-pack forecast fitted on Enterprise Cloud Historian data, and the resulting orders released in RISE with SAP S/4HANA Cloud (Project Navodaya).</p>
         </div>
 
         <!-- 5-Box Executive KPI Summary Bar -->
         <div class="kpi-bar">
-            <div class="kpi-box kpi-box-navy">
-                <div class="kpi-label">Chhainsa Linepack</div>
-                <div class="kpi-val">{scada_summary.get('latest_pressure_kg_cm2', 81.47)}</div>
-                <div class="kpi-sub">kg/cm² (Nominal: 80-84)</div>
-            </div>
-            <div class="kpi-box kpi-box-orange">
-                <div class="kpi-label">Grid Throughput</div>
-                <div class="kpi-val">{scada_summary.get('average_flow_mmscmd', 48.05)}</div>
-                <div class="kpi-sub">MMSCMD (HVJ Trunk)</div>
+            <div class="kpi-box kpi-box-red">
+                <div class="kpi-label">Shortfall (HVJ North)</div>
+                <div class="kpi-val">{sf['shortfall_mmscmd']}</div>
+                <div class="kpi-sub">MMSCMD from {sf['starts_at'][11:16]} IST</div>
             </div>
             <div class="kpi-box kpi-box-green">
-                <div class="kpi-label">Project Sanchay Fuel ROI</div>
-                <div class="kpi-val">₹16.88 Cr</div>
-                <div class="kpi-sub">Annualized (+3.8% Setpoint)</div>
-            </div>
-            <div class="kpi-box kpi-box-red">
-                <div class="kpi-label">River Swell Alert</div>
-                <div class="kpi-val">206.4 m</div>
-                <div class="kpi-sub">Gauna-Bawana (Danger: 205.33m)</div>
+                <div class="kpi-label">LNG Saving vs Spot</div>
+                <div class="kpi-val">₹{lng['saving_vs_spot_inr_crore']} Cr</div>
+                <div class="kpi-sub">{lng['recommended_option_label']}</div>
             </div>
             <div class="kpi-box kpi-box-navy">
-                <div class="kpi-label">WeatherNext Rainfall</div>
-                <div class="kpi-val">{precip_p90} mm</div>
-                <div class="kpi-sub">Catchment p90 Deluge</div>
+                <div class="kpi-label">Breach Without Action</div>
+                <div class="kpi-val">T+{breach_h}h</div>
+                <div class="kpi-sub">{fc['minimum_predicted_pressure_kg_cm2']} kg/cm² min (floor {floor:.1f})</div>
+            </div>
+            <div class="kpi-box kpi-box-green">
+                <div class="kpi-label">Line-Pack With Swap</div>
+                <div class="kpi-val">{fc['with_swap_minimum_kg_cm2']}</div>
+                <div class="kpi-sub">kg/cm² minimum · no breach</div>
+            </div>
+            <div class="kpi-box kpi-box-orange">
+                <div class="kpi-label">Vijaipur Setpoint</div>
+                <div class="kpi-val">+{sp['throughput_adjustment_pct']}%</div>
+                <div class="kpi-sub">SAP order {wo_id}</div>
             </div>
         </div>
+
+        {decision_html}
 
         <!-- Official 10-Point Grid Integrity Executive Highlights -->
         <div class="highlights-card">
             <div class="highlights-banner">Operational & Integrity Highlights for the Day</div>
             <div class="highlights-content">
                 <ol>
-                    <li><strong>Network Integrity Overview:</strong> Total active cross-country pipeline network maintained at 18,700 km with 99.98% hydraulic availability across the HVJ, MNJPL, and JHBDPL (Urja Ganga) systems.</li>
-                    <li><strong>Catchment Flood Watch (WeatherNext 3):</strong> Google DeepMind WeatherNext 3 ensemble models flag critical deluge risk in the Upper Yamuna catchment with 115.6 mm (p90) precipitation over 24 hours.</li>
-                    <li><strong>Yamuna Submerged Crossing Hazard:</strong> River gauge at Gauna-Bawana crossing reached 206.40 m, exceeding the statutory danger mark of 205.33 m. Upstream sectionalizing valve (SV-14) isolation protocol is armed on standby.</li>
-                    <li><strong>Chhainsa Terminal Pressure Observation:</strong> Yokogawa SCADA telemetry reports baseline linepack pressure at 81.47 kg/cm², approaching the lower operating buffer threshold of 80.0 kg/cm².</li>
-                    <li><strong>Turbine Thermal Limits:</strong> Siemens RDS logs for Vijaipur GT-01 confirm exhaust temperatures at 549.4°C, safely below the 555.0°C OEM trip limit under heavy compression duty.</li>
-                    <li><strong>Econometric Deficit Window:</strong> 24-hour multivariate SARIMAX demand forecasting models predict linepack breach (74.20 kg/cm² vs 78.50 kg/cm² minimum threshold) at T+14h (20:00 IST).</li>
-                    <li><strong>Autonomous Setpoint Advisory:</strong> SARIMAX econometric engine advises a +3.8% compressor throughput boost at Vijaipur Hub at 14:00 IST (8 hours advance lead time, transit wave speed 35 km/h over 380 km).</li>
-                    <li><strong>Project Sanchay Economic Savings:</strong> Preemptive compression ramp saves 18,500 SCM/day of fuel gas, delivering ₹4,62,500/day in operational margin recovery (₹16.88 Crore annualized).</li>
-                    <li><strong>Decarbonization Impact:</strong> Daily fuel gas conservation achieves an annualized Scope-1 greenhouse gas mitigation of 13,500 MT CO₂e, supporting GAIL's Net Zero 2035 target.</li>
-                    <li><strong>Enterprise ERP Closed-Loop Execution:</strong> Automated work order WO-481918 successfully staged in RISE with SAP S/4HANA Cloud (Project Navodaya) with SHA-256 audit hash <code>7a3f9e4b81c2d0e7</code>.</li>
+                    <li><strong>Network:</strong> 18,700 km grid transmitting 122.18 MMSCMD across HVJ, Urja Ganga, DBNPL and MNJPL.</li>
+                    <li><strong>Demand revision:</strong> {sf['reason']} — {sf['shortfall_mmscmd']} MMSCMD above baseline on {sf['segment']}.</li>
+                    <li><strong>Sourcing decision:</strong> {lng['recommended_option_label']} selected at ${lng['recommended_delivered_cost_usd_mmbtu']:.2f}/MMBtu; US Henry Hub re-route screened out on timing; spot cargo ${lng['saving_vs_spot_usd_mmbtu']:.2f}/MMBtu dearer.</li>
+                    <li><strong>Commercial value:</strong> ₹{lng['saving_vs_spot_inr_crore']} Cr saved versus spot on one {lng['cargo_size_mmbtu']/1e6:.1f} TBtu cargo (illustrative prices).</li>
+                    <li><strong>Grid proof:</strong> {fc['model_type']} fitted on {fc['fitted_on_hours']}h history (β = {fc['linepack_sensitivity_beta']} kg/cm² per MMSCMD-h, in-sample MAPE {fc['mape_backtest_pct']}%).</li>
+                    <li><strong>Without action:</strong> Chhainsa breaches the {floor:.1f} kg/cm² contract floor at T+{breach_h}h ({breach_ts} IST).</li>
+                    <li><strong>With the swap:</strong> line-pack stays at or above {fc['with_swap_minimum_kg_cm2']} kg/cm² for the full 24h.</li>
+                    <li><strong>Operations:</strong> Vijaipur throughput +{sp['throughput_adjustment_pct']}% ({sp['current_vijaipur_throughput_mmscmd']} → {sp['recommended_vijaipur_throughput_mmscmd']} MMSCMD) carries the extra Dahej gas north.</li>
+                    <li><strong>Project Sanchay:</strong> a planned ramp avoids an emergency multi-unit start, saving 18,500 SCM/day of fuel gas (₹16.88 Cr/yr).</li>
+                    <li><strong>ERP closed loop:</strong> SAP order {wo_id} released in RISE with SAP S/4HANA (Project Navodaya), audit hash <code>{wo_hash}</code>.</li>
                 </ol>
             </div>
         </div>
+
+        {lng_html}
 
         <!-- PART A: MACROECONOMIC INDICATORS & GAS GRID BALANCE -->
         <div class="section-title">
@@ -717,49 +792,25 @@ class ExecutiveReportCompiler:
 
         <!-- PART D: ECONOMETRIC SARIMAX LINEPACK FORECAST -->
         <div class="section-title">
-            <span>Part D: Deterministic Multivariate SARIMAX (1,1,1)×(1,1,1)₂₄ Time-Series Forecast</span>
-            <span style="font-size: 13px; font-weight: 700; color: var(--gail-navy);">SEASONAL DIURNAL (S=24) + EXOGENOUS NOMINATIONS (X₁)</span>
+            <span>Part D: Fitted {fc['model_type']} — Two-Scenario Line-Pack Forecast</span>
+            <span style="font-size: 13px; font-weight: 700; color: var(--gail-navy);">FITTED ON 72h HISTORY · AIC {fc['aic']}</span>
         </div>
 
         <div class="alert-box">
-            <div class="alert-title">MATHEMATICAL EARLY WARNING: WHY SARIMAX PREDICTS A T+14h DIP ON A FLAT PRESSURE TREND</div>
+            <div class="alert-title">HOW THE FORECAST IS PRODUCED</div>
             <div class="alert-desc">
-                Univariate time-series models (basic ARIMA/Holt-Winters) only extrapolate past pressure (Yₜ) and miss upcoming inflection points. 
-                GAIL's Multivariate Box-Jenkins SARIMAX model combines <strong>24-Hour Diurnal Seasonality (S=24: Yₜ₋₂₄, Yₜ₋₄₈)</strong> with <strong>Exogenous Leading Regressors (βXₜ₊ₖ)</strong>—specifically the scheduled +20% Fertilizer (HURL/NFL) and +12% CGD customer off-take nominations (X₁) from Table B.1. 
-                Because hydraulic propagation across the 18,700 km grid introduces a multi-hour wave delay, the equation <strong>Ŷₜ₊ₖ = μ + ϕYₜ + θS₂₄ + βXₜ₊ₖ</strong> deterministically identifies the <strong>73.80 kg/cm² line-pack deficit at T+14h</strong> (2.20 kg/cm² below the 76.00 kg/cm² contract floor) hours before physical pressure drops at Chhainsa.
+                Line-pack pressure responds to the cumulative supply–demand balance of the segment. The model regresses Chhainsa pressure on that balance with SARIMA(1,1,0)×(1,0,0)₂₄ errors and learns the sensitivity from 72 hours of history (β = {fc['linepack_sensitivity_beta']} kg/cm² per MMSCMD-hour). The same fitted model is then run twice: once with the revised nominations and no extra supply, and once with +{fc['extra_supply_mmscmd']} MMSCMD Dahej send-out from T+{fc['extra_supply_from_hour']}h. Every number in Table D.1 comes from the fitted model.
             </div>
         </div>
 
-        <div class="table-title">Table D.1: 24-Hour Horizon Linepack Depletion Forecast & Confidence Intervals (Chhainsa CS)</div>
+        <div class="table-title">Table D.1: 24-Hour Chhainsa Line-Pack Forecast (kg/cm²) — Without Action vs With LNG Swap</div>
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Forecast Horizon</th>
-                    <th>Valid Time (IST)</th>
-                    <th>Projected Linepack</th>
-                    <th>95% Confidence Interval</th>
-                    <th>Downstream Off-Take</th>
-                    <th>System State</th>
-                    <th>Recommended Setpoint</th>
+                    <th>Horizon</th><th>Valid Time</th><th>Without action</th><th>95% interval</th><th>With swap</th><th>Revised off-take (MMSCMD)</th><th>State (without action)</th>
                 </tr>
             </thead>
-            <tbody>
-                <tr><td>T+1h</td><td>15:00 IST</td><td>81.30 kg/cm²</td><td>[80.10 - 82.50] kg/cm²</td><td>48.2 MMSCMD</td><td>NOMINAL</td><td>Maintain 82.5 kg/cm²</td></tr>
-                <tr><td>T+4h</td><td>18:00 IST</td><td>80.85 kg/cm²</td><td>[79.20 - 82.50] kg/cm²</td><td>48.9 MMSCMD</td><td>NOMINAL</td><td>Maintain 82.5 kg/cm²</td></tr>
-                <tr><td>T+8h (Action Trigger)</td><td>22:00 IST</td><td>78.40 kg/cm²</td><td>[76.50 - 80.30] kg/cm²</td><td>50.1 MMSCMD</td><td>ALERT</td><td><strong>Ramp Vijaipur +3.8%</strong></td></tr>
-                <tr><td>T+12h</td><td>02:00 IST (+1d)</td><td>75.60 kg/cm²</td><td>[73.40 - 77.80] kg/cm²</td><td>52.4 MMSCMD</td><td>BUFFER_EROSION</td><td>Advise Chhainsa Boost</td></tr>
-                <tr class="highlight-row">
-                    <td><strong>T+14h (Deficit Breach)</strong></td>
-                    <td><strong>04:00 IST (+1d)</strong></td>
-                    <td><strong>74.20 kg/cm²</strong></td>
-                    <td><strong>[71.80 - 76.60] kg/cm²</strong></td>
-                    <td><strong>53.8 MMSCMD</strong></td>
-                    <td><span style="color: #DC2626; font-weight: 800;">CRITICAL_DEFICIT</span></td>
-                    <td><strong>+3.8% Wave Arrival Prevents Breach</strong></td>
-                </tr>
-                <tr><td>T+18h</td><td>08:00 IST (+1d)</td><td>76.80 kg/cm²</td><td>[74.20 - 79.40] kg/cm²</td><td>49.0 MMSCMD</td><td>RECOVERING</td><td>Wave Packing Line</td></tr>
-                <tr><td>T+24h</td><td>14:00 IST (+1d)</td><td>80.50 kg/cm²</td><td>[78.00 - 83.00] kg/cm²</td><td>47.5 MMSCMD</td><td>STABILIZED</td><td>Restore Nominal Setpoint</td></tr>
-            </tbody>
+            <tbody>{fc_rows}</tbody>
         </table>
 
         <!-- PART E: PROJECT SANCHAY OPTIMIZATION & FINANCIAL BALANCE SHEET -->
@@ -843,7 +894,7 @@ class ExecutiveReportCompiler:
             <tbody>
                 <tr>
                     <td>RISE with SAP S/4HANA Cloud</td>
-                    <td>Work Order WO-481918 (Plant 1102)</td>
+                    <td>Work Order {wo_id} (Plant 1102)</td>
                     <td>Project Navodaya</td>
                     <td><code>7a3f9e4b81c2d0e7</code></td>
                     <td><span class="status-pill-synced">RELEASED_FOR_EXECUTION</span></td>
@@ -856,11 +907,11 @@ class ExecutiveReportCompiler:
                     <td><span class="status-pill-synced">SYNCHRONIZED</span></td>
                 </tr>
                 <tr>
-                    <td>Google DeepMind WeatherNext 3</td>
-                    <td>Ensemble Cycle WX3-0.05-YAMUNA</td>
-                    <td>Google Earth & Climate AI</td>
+                    <td>LNG Market Snapshot (illustrative)</td>
+                    <td>Landed-cost engine · {lng['as_of']}</td>
+                    <td>Gas Marketing & LNG Desk</td>
                     <td><code>e81b402fc731d99a</code></td>
-                    <td><span class="status-pill-synced">VERIFIED_P90</span></td>
+                    <td><span class="status-pill-synced">DETERMINISTIC</span></td>
                 </tr>
                 <tr>
                     <td>GCS Data Lake Curated Zone</td>
@@ -876,7 +927,7 @@ class ExecutiveReportCompiler:
         <div class="audit-box">
             <div>
                 <strong>ERP Execution Record:</strong> Staged in RISE with SAP S/4HANA Cloud (Project Navodaya)<br>
-                <strong>Work Order:</strong> WO-481918 (Plant 1102, Vijaipur Hub) · <strong>Integrity Hash:</strong> <code>7a3f9e4b81c2d0e7</code>
+                <strong>Work Order:</strong> {wo_id} (Plant 1102, Vijaipur Hub) · <strong>Integrity Hash:</strong> <code>{wo_hash}</code>
             </div>
             <div style="text-align: right;">
                 <span class="status-pill-synced">VERIFIED SOVEREIGN AUDIT TRAIL</span><br>
@@ -886,7 +937,7 @@ class ExecutiveReportCompiler:
 
         <!-- Footer -->
         <div class="footer">
-            <div><strong>Sovereign Operational Sources:</strong> Yokogawa FAST/TOOLS SCADA • Siemens Remote Diagnostic Services (RDS) • Google DeepMind WeatherNext 3 • RISE with SAP S/4HANA (Project Navodaya)</div>
+            <div><strong>Sovereign Operational Sources:</strong> GMS Nominations • Enterprise Cloud Historian • LNG Market Snapshot (illustrative) • RISE with SAP S/4HANA (Project Navodaya)</div>
             <div>GAIL (India) Limited · National Gas Management Centre (NGMC) · Sovereign Hydrocarbon Deliverable</div>
         </div>
 

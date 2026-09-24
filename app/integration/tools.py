@@ -1,13 +1,14 @@
 """
-Concrete Agent Tools for the GAIL Autonomous Pipeline Grid Agent.
-Provides 7 callable functions mapping directly to the 5-Act Demonstration Blueprint & WeatherNext 3 AI models:
-  1. audit_grid_and_weather_risk: Spatial GIS & WeatherNext river swell alert layer (Act 1)
-  2. get_weathernext_forecast: Google DeepMind WeatherNext 3 probabilistic weather forecast (Act 1 / Weather AI)
-  3. query_scada_telemetry: Yokogawa SCADA & Siemens RDS turbine feeds (Act 2)
-  4. run_sarimax_linepack_forecast: Econometric SARIMAX forecasting & setpoint advisory (Act 3)
-  5. compile_executive_briefing: Multi-source sovereign HTML executive briefing report (Act 4)
-  6. stage_sap_maintenance_order: RISE with SAP S/4HANA work order staging (Act 5)
-  7. query_enterprise_knowledge: GAIL AI Tarang natural language Q&A (Act 5)
+Agent tools for the GAIL "One Morning at GAIL" demo.
+
+Main storyline (Problem -> Decision -> Proof -> Action):
+  1. audit_grid_and_weather_risk   - grid flows + revised customer nominations -> 4.0 MMSCMD shortfall
+  2. evaluate_lng_supply_options   - deterministic LNG landed-cost comparison -> recommended option
+  3. run_sarimax_linepack_forecast - fitted SARIMAX, two scenarios (line-pack only vs with LNG)
+  4. publish_decision_brief        - executive report + RISE with SAP order, one card
+
+Backup tools: query_scada_telemetry, get_weathernext_forecast, compile_executive_briefing,
+stage_sap_maintenance_order, query_enterprise_knowledge.
 """
 
 import json
@@ -28,8 +29,11 @@ from app.contracts import (
     ExecutiveBriefingReport,
     SapWorkOrderRequest,
     SapWorkOrderResponse,
-    EnterpriseQueryResponse
+    EnterpriseQueryResponse,
+    LngSupplyOptionsResponse,
+    DecisionBriefResponse,
 )
+from app import scenario
 from app.analytics.sarimax_linepack import SarimaxLinepackEngine
 from app.analytics.weathernext_engine import WeatherNextEngine
 from app.render.a2ui_cards import (
@@ -55,6 +59,16 @@ PENDING_SARIMAX_KEY: str = "pending_sarimax_summary"
 PENDING_REPORT_KEY: str = "pending_report_summary"
 PENDING_SAP_KEY: str = "pending_sap_summary"
 PENDING_ENTERPRISE_QA_KEY: str = "pending_enterprise_qa_summary"
+PENDING_LNG_KEY: str = "pending_lng_summary"
+PENDING_DECISION_KEY: str = "pending_decision_summary"
+
+
+def _stash(tool_context: Any, key: str, value: Dict[str, Any]) -> None:
+    if tool_context is not None and getattr(tool_context, "state", None) is not None:
+        try:
+            tool_context.state[key] = value
+        except Exception:
+            pass
 
 
 # =============================================================================
@@ -66,15 +80,29 @@ def audit_grid_and_weather_risk(
     tool_context: Optional[ToolContext] = None
 ) -> GridHealthAuditResponse:
     """
-    STEP 1 Tool: Accesses the GAIL Enterprise Data Lake (gs://gail-midstream-ge-demo-datalake),
-    Gas Management System (GMS), regional transmission corridor volumes across GAIL's 18,700 km network
-    (122.18 MMSCMD across HVJ, Urja Ganga / JHBDPL, DBNPL, MNJPL), and sectoral customer off-take nominations
-    (Fertilizer HURL/NFL/IFFCO, CGD, Power, and Pata Petrochemicals).
+    BEAT 1 (Problem): Shows today's grid flows across GAIL's 18,700 km network (122.18 MMSCMD across
+    HVJ, Urja Ganga, DBNPL, MNJPL) and tomorrow's revised customer nominations, and computes the
+    resulting supply shortfall on HVJ North (Fertilizer +20%, CGD +12% => ~4.0 MMSCMD).
+    Use for: grid flows, corridor volumes, customer nominations, data lake / GMS access.
     """
     gis_data = load_geojson("river_crossings_gis.geojson")
     weathernext = WeatherNextEngine().get_forecast(location="Gauna_Bawana")
         
+    sf = scenario.shortfall()
     alerts = [
+        {
+            "location_name": "Revised Customer Nominations - HVJ North (Exogenous X)",
+            "asset_class": "COMMERCIAL_GMS_NOMINATION_SCHEDULE",
+            "risk_level": "SUPPLY_SHORTFALL",
+            "river_gauge_m": sf["revised_daily_offtake_mmscmd"],
+            "danger_mark_m": sf["baseline_daily_offtake_mmscmd"],
+            "imd_rainfall_alert": (
+                f"Fertilizer (HURL/NFL) +{sf['fertilizer_change_pct']:.0f}% and CGD +{sf['cgd_change_pct']:.0f}% "
+                f"from {sf['starts_at'][11:16]} IST"
+            ),
+            "hydraulic_stress_indicator": f"SHORTFALL_{sf['shortfall_mmscmd']}_MMSCMD",
+            "action_advisory": "Evaluate LNG supply options, then forecast Chhainsa line-pack.",
+        },
         {
             "location_name": "Gauna-Bawana Yamuna River Crossing",
             "asset_class": "SUBMERGED_PIPELINE_CROSSING",
@@ -83,20 +111,10 @@ def audit_grid_and_weather_risk(
             "danger_mark_m": 205.33,
             "imd_rainfall_alert": "Normal Seasonal Waterway Flow",
             "hydraulic_stress_indicator": "NORMAL_STABILITY",
-            "action_advisory": "Routine aerial and pressure log monitoring active."
+            "action_advisory": "Routine aerial and pressure log monitoring active.",
         },
-        {
-            "location_name": "HVJ & Urja Ganga Fertilizer Anchor Nominations (Exogenous X₁)",
-            "asset_class": "COMMERCIAL_GMS_NOMINATION_SCHEDULE",
-            "risk_level": "HIGH_DEMAND_RAMP",
-            "river_gauge_m": 122.18,
-            "danger_mark_m": 134.70,
-            "imd_rainfall_alert": "Fertilizer (HURL/NFL) +20.0% & CGD +12.0% Scheduled Morning Off-Take Ramp",
-            "hydraulic_stress_indicator": "PRE-SURGE_LINEPACK_WATCH",
-            "action_advisory": "Execute 72h Cloud Historian time-series inspection and run 24h Box-Jenkins SARIMAX forecast."
-        }
     ]
-    
+
     a2ui_map = build_a2ui_spatial_map_card(gis_data, weathernext)
     
     res = GridHealthAuditResponse(
@@ -114,8 +132,9 @@ def audit_grid_and_weather_risk(
             "model": "GAIL GMS & Enterprise Data Lake Inventory",
             "risk_category": "EXOGENOUS_NOMINATION_SURGE_X1",
             "cumulative_precipitation_p90_mm": 122.18,
-            "alert": "122.18 MMSCMD verified across 5 regional corridors; +20% Fertilizer off-take ramp scheduled at T+8h."
+            "alert": f"122.18 MMSCMD verified across 5 regional corridors; tomorrow's shortfall on HVJ North: {sf['shortfall_mmscmd']} MMSCMD."
         },
+        demand_shortfall=sf,
         a2ui_map_payload=a2ui_map
     )
 
@@ -210,23 +229,17 @@ def run_sarimax_linepack_forecast(
     tool_context: Optional[ToolContext] = None
 ) -> SarimaxForecastResponse:
     """
-    STEP 3 Tool: Executes GAIL's deterministic multivariate Box-Jenkins SARIMAX (1,1,1)x(1,1,1)_24 model
-    combining 24-hour Diurnal Seasonality (S=24) and Exogenous Customer Off-Take Nominations (X₁: Fertilizer & CGD schedules)
-    with 95% confidence intervals and Project Sanchay compressor setpoint optimization.
+    BEAT 3 (Proof): Fits a SARIMAX(1,1,0)x(1,0,0)_24 model on 72h of Chhainsa history (exogenous input:
+    supply-demand balance) and forecasts 24h line-pack for two scenarios from the same model:
+    "line-pack draw only" (no extra supply) vs "with LNG swap" (+4.0 MMSCMD Dahej send-out from T+6h).
+    Returns breach hour vs the 76.0 kg/cm2 contract floor, 95% intervals and the Vijaipur setpoint.
+    Use for: "can the grid carry it", forecast, SARIMAX, line-pack, setpoint.
     """
-    engine = SarimaxLinepackEngine()
-    forecast_results = engine.run_forecast(horizon_hours=horizon_hours)
-    
+    forecast_results = dict(scenario.forecast())
     a2ui_chart = build_a2ui_forecast_chart(forecast_results)
     forecast_results["a2ui_forecast_chart"] = a2ui_chart
     res = SarimaxForecastResponse(**forecast_results)
-
-    if tool_context and hasattr(tool_context, "state") and tool_context.state is not None:
-        try:
-            tool_context.state[PENDING_SARIMAX_KEY] = res.model_dump()
-        except Exception:
-            pass
-
+    _stash(tool_context, PENDING_SARIMAX_KEY, res.model_dump())
     return res
 
 
@@ -234,7 +247,10 @@ def run_sarimax_linepack_forecast(
 # TOOL 5 (STEP 4): EXHAUSTIVE GAIL EXECUTIVE READY RECKONER REPORT COMPILER
 # =============================================================================
 
-def compile_executive_briefing(tool_context: Optional[ToolContext] = None) -> ExecutiveBriefingReport:
+def compile_executive_briefing(
+    tool_context: Optional[ToolContext] = None,
+    sap_order: Optional[Dict[str, Any]] = None,
+) -> ExecutiveBriefingReport:
     """
     STEP 4 Tool: Compiles the exhaustive 6-Part GAIL (India) Limited Daily Gas Transmission,
     SARIMAX Demand & Project Sanchay Executive Report (Ready Reckoner HTML edition) from GMS,
@@ -244,15 +260,18 @@ def compile_executive_briefing(tool_context: Optional[ToolContext] = None) -> Ex
     scada_summary = query_scada_telemetry().model_dump()
     sarimax_results = run_sarimax_linepack_forecast().model_dump()
     weathernext_yamuna = get_weathernext_forecast("Gauna_Bawana").model_dump()
-    
+    story = scenario.storyline()
+
     compiler = ExecutiveReportCompiler()
     html_path = compiler.compile_html_report(
         grid_audit=grid_audit,
         scada_summary=scada_summary,
         sarimax_results=sarimax_results,
-        weathernext_data=weathernext_yamuna
+        weathernext_data=weathernext_yamuna,
+        sap_order_status=sap_order,
+        storyline=story,
     )
-    
+
     # Publish to GCS Data Lake Curated Zone
     report_filename = Path(html_path).name
     with open(html_path, "r", encoding="utf-8") as f:
@@ -263,16 +282,11 @@ def compile_executive_briefing(tool_context: Optional[ToolContext] = None) -> Ex
     
     res = ExecutiveBriefingReport(
         report_id=f"GAIL-EXEC-REP-{datetime.now().strftime('%Y%m%d%H%M')}",
-        report_title="Daily Line-Pack & Grid Integrity Sovereign Executive Briefing",
+        report_title="Daily Line-Pack & Supply Decision Executive Briefing",
         generated_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        executive_summary=(
-            "Autonomous grid assessment flags Yamuna river flash-flood risk at Gauna-Bawana via WeatherNext 3. "
-            "SARIMAX econometric model predicts linepack depletion at Chhainsa 14 hours ahead. "
-            "Recommending +3.8% throughput increase at Vijaipur compressor hub, saving 18,500 SCM/day "
-            "of fuel gas (~Rs 4.62 Lakhs/day) under Project Sanchay."
-        ),
-        grid_integrity_status="MONITORED_HAZARD_FLAGGED",
-        weather_risk_summary="WeatherNext 3: High river swell on Yamuna crossing post catchment deluge (115.6mm p90)",
+        executive_summary=story["headline"],
+        grid_integrity_status="SHORTFALL_COVERED" if not sarimax_results.get("with_swap_breach") else "AT_RISK",
+        weather_risk_summary="Gauna-Bawana Yamuna crossing: WATCH (below danger mark); no weather constraint on the plan.",
         telemetry_summary={
             "station": "Chhainsa_CS",
             "linepack_pressure_kg_cm2": scada_summary["latest_pressure_kg_cm2"],
@@ -280,18 +294,21 @@ def compile_executive_briefing(tool_context: Optional[ToolContext] = None) -> Ex
         },
         sarimax_findings={
             "deficit_hour_ahead": sarimax_results["pressure_deficit_hour_ahead"],
+            "min_without_action_kg_cm2": sarimax_results["minimum_predicted_pressure_kg_cm2"],
+            "min_with_swap_kg_cm2": sarimax_results["with_swap_minimum_kg_cm2"],
             "recommended_setpoint": f"+{setpoint.get('throughput_adjustment_pct')}% at {setpoint.get('action_hour')}"
         },
         project_sanchay_roi={
             "fuel_savings_scm_day": setpoint.get("fuel_gas_savings_scm_day"),
             "daily_margin_recovery_inr": setpoint.get("project_sanchay_daily_savings_inr"),
-            "annualized_inr_crores": 16.88
+            "annualized_inr_crores": 16.88,
+            "lng_saving_vs_spot_inr_crore": story["lng"]["saving_vs_spot_inr_crore"],
         },
         compiled_html_path=gcs_uri or html_path,
         sources_cited=[
-            "Yokogawa FAST/TOOLS SCADA (Chhainsa/Vijaipur)",
-            "Siemens Remote Diagnostic Services (RDS)",
-            "Google DeepMind WeatherNext 3 (0.05° Station Ensemble)",
+            "GMS customer nominations (baseline vs revised)",
+            "LNG market snapshot (illustrative) & landed-cost engine",
+            "Enterprise Cloud Historian - Chhainsa 72h (SARIMAX training data)",
             "RISE with SAP S/4HANA (Project Navodaya)",
             "GAIL AI Tarang Operational Guidelines"
         ]
@@ -332,7 +349,7 @@ def stage_sap_maintenance_order(
         sap_system="RISE with SAP S/4HANA Cloud (Project Navodaya)",
         execution_plant="1102 - Vijaipur Compressor Complex",
         scheduled_action_time=(now).strftime("%Y-%m-%d 14:00:00"),
-        throughput_calibration="+3.8% (Target: 49.3 MMSCMD, Fuel Burn Reduction)",
+        throughput_calibration="+3.8% Vijaipur throughput (105.3 -> 109.3 MMSCMD) to carry +4.0 MMSCMD Dahej send-out",
         project_alignment="Project Sanchay Fuel Gas Minimization Mandate (₹600 Cr NPV Target)",
         audit_hash=audit_hash
     )
@@ -424,4 +441,62 @@ def query_enterprise_knowledge(query: str, tool_context: Optional[ToolContext] =
         except Exception:
             pass
 
+    return res
+
+
+# =============================================================================
+# BEAT 2 (DECISION): LNG SUPPLY OPTIONS - DETERMINISTIC LANDED COST
+# =============================================================================
+
+def evaluate_lng_supply_options(tool_context: Optional[ToolContext] = None) -> LngSupplyOptionsResponse:
+    """
+    BEAT 2 (Decision): Finds the cheapest way to cover tomorrow's HVJ North shortfall. Prices three LNG
+    options delivered at Dahej with fixed formulas (Spot JKM cargo; US Henry Hub cargo re-route via Cape;
+    Qatar term-cargo time-swap), screens them for arrival timing against terminal inventory cover,
+    recommends the cheapest feasible option and computes the Rs Crore saving versus buying spot.
+    Prices are illustrative demo values. Use for: "cheapest way to cover the shortfall", LNG sourcing,
+    Henry Hub, JKM, cargo swap, landed cost.
+    """
+    res = LngSupplyOptionsResponse(**scenario.lng_decision())
+    _stash(tool_context, PENDING_LNG_KEY, res.model_dump())
+    return res
+
+
+# =============================================================================
+# BEAT 4 (ACTION): DECISION BRIEF + SAP ORDER IN ONE STEP
+# =============================================================================
+
+def publish_decision_brief(tool_context: Optional[ToolContext] = None) -> DecisionBriefResponse:
+    """
+    BEAT 4 (Action): Briefs management and raises the SAP order in one step. Stages the RISE with SAP
+    S/4HANA order (Vijaipur +3.8% throughput and Dahej send-out nomination), compiles the executive
+    report with a one-page decision summary, publishes it to the data lake and returns the report link
+    and SAP order ID together. Use for: "brief management and raise the SAP order", executive report,
+    management briefing, work order.
+    """
+    sap = stage_sap_maintenance_order().model_dump()
+    report = compile_executive_briefing(sap_order=sap)
+    story = scenario.storyline()
+    f, d = story["forecast"], story["lng"]
+    res = DecisionBriefResponse(
+        headline=story["headline"],
+        shortfall_mmscmd=story["shortfall"]["shortfall_mmscmd"],
+        chosen_option=d["recommended_option_label"],
+        saving_vs_spot_inr_crore=d["saving_vs_spot_inr_crore"],
+        breach_hour_without_action=f["pressure_deficit_hour_ahead"],
+        min_pressure_without_action_kg_cm2=f["minimum_predicted_pressure_kg_cm2"],
+        min_pressure_with_action_kg_cm2=f["with_swap_minimum_kg_cm2"],
+        vijaipur_throughput_adjustment_pct=f["setpoint_recommendation"]["throughput_adjustment_pct"],
+        report_url=report.compiled_html_path,
+        report_id=report.report_id,
+        sap_work_order_id=sap["work_order_id"],
+        sap_system=sap["sap_system"],
+        sap_order_status=sap["order_status"],
+        sap_actions=[
+            f"PM order: Vijaipur Hub throughput +{f['setpoint_recommendation']['throughput_adjustment_pct']}% at T+6h",
+            f"Nomination: Dahej send-out +{d['dahej_sendout_increase_mmscmd']} MMSCMD ({d['recommended_option_label']})",
+        ],
+        audit_hash=sap["audit_hash"],
+    )
+    _stash(tool_context, PENDING_DECISION_KEY, res.model_dump())
     return res

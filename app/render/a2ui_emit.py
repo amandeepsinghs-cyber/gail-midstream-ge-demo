@@ -68,7 +68,7 @@ def build_spatial_surface(data: Any, surface_id: str) -> List[types.Part]:
     title_component = {
         "id": "title",
         "component": "Text",
-        "text": "🗄️ GAIL Enterprise Data Lake & Gas Management System (GMS) Inventory",
+        "text": "🗄️ Grid Flows & Tomorrow's Customer Nominations",
         "variant": "h3",
     }
     subtitle_component = {
@@ -84,20 +84,28 @@ def build_spatial_surface(data: Any, surface_id: str) -> List[types.Part]:
         "height": 220,
     }
     div_component = {"id": "div1", "component": "Divider"}
+    sf = dumped.get("demand_shortfall") or {}
+    if not sf:
+        from app import scenario
+        sf = scenario.shortfall()
     status_component = {
         "id": "status_text",
         "component": "Text",
         "text": (
-            "• Total Verified Grid Throughput: 122.18 MMSCMD across 18,700 km (5 Regional Corridors Audited)\n"
-            "• Sectoral Customer Nominations (Exogenous X₁): Fertilizer (HURL/NFL/IFFCO) 38.4 MMSCMD (+20% Scheduled Ramp) · CGD 28.2 MMSCMD · Power 24.8 MMSCMD · Pata Petrochemical & Industrial 30.78 MMSCMD\n"
-            "• Enterprise Data Sources Connected: gs://gail-midstream-ge-demo-datalake · GMS Commercial Nominations · Cloud Historian · RISE with SAP S/4HANA Cloud"
+            f"⚠️ **Tomorrow's shortfall on {sf.get('segment', 'HVJ North')}: {sf.get('shortfall_mmscmd', 4.0)} MMSCMD** "
+            f"from {str(sf.get('starts_at', ''))[11:16]} IST\n"
+            f"• Revised nominations: Fertilizer (HURL/NFL) +{sf.get('fertilizer_change_pct', 20):.0f}% "
+            f"(+{sf.get('fertilizer_delta_mmscmd', 3.0)} MMSCMD) · CGD +{sf.get('cgd_change_pct', 12):.0f}% "
+            f"(+{sf.get('cgd_delta_mmscmd', 1.0)} MMSCMD)\n"
+            f"• Segment off-take: {sf.get('baseline_daily_offtake_mmscmd')} → {sf.get('revised_daily_offtake_mmscmd')} MMSCMD (baseline → revised)\n"
+            f"• Reason: {sf.get('reason', '')}"
         ),
         "variant": "body",
     }
     alerts_component = {
         "id": "alerts_list",
         "component": "Text",
-        "text": "Data Governance: 100% Schema Validated · Zero Quarantined Submissions · Ready for Time-Series & SARIMAX Modeling.",
+        "text": "Sources: GMS customer nominations · Enterprise Cloud Historian · gs://gail-midstream-ge-demo-datalake. Next: evaluate LNG supply options.",
         "variant": "caption",
     }
 
@@ -303,30 +311,43 @@ def build_sarimax_surface(data: Any, surface_id: str) -> List[types.Part]:
     title_comp = {
         "id": "sm-title",
         "component": "Text",
-        "text": f"📈 Deterministic SARIMAX (1,1,1)×(1,1,1)₂₄ Time-Series Forecast · {station}",
+        "text": f"📈 Can the grid carry it? · {dumped.get('target_station', station)}",
         "variant": "h3",
     }
     sub_comp = {
         "id": "sm-sub",
         "component": "Text",
-        "text": "Multivariate Box-Jenkins Model · Seasonal 24h Diurnal Cycle (S=24) + Exogenous Customer Nominations (X₁)",
+        "text": (
+            f"① Loaded {dumped.get('fitted_on_hours', 72)}h historian data  ② Detected daily cycle "
+            f"(~{dumped.get('daily_cycle_amplitude_kg_cm2')} kg/cm² swing)  ③ Fitted {dumped.get('model_type')} "
+            f"(β = {dumped.get('linepack_sensitivity_beta')})  ④ Back-tested on last {dumped.get('backtest_holdout_hours')}h: "
+            f"{dumped.get('backtest_mape_pct')}% error  ⑤ Forecast two futures with 80% / 95% cones"
+        ),
         "variant": "caption",
     }
     chart_comp = {
         "id": "sm-chart",
         "component": "VegaChart",
         "spec": spec,
-        "height": 280,
+        "height": 340,
     }
     div_comp = {"id": "sm-div", "component": "Divider"}
+    breach_h = dumped.get("pressure_deficit_hour_ahead")
+    breach_ts = str(dumped.get("pressure_deficit_timestamp") or "")[11:16]
+    floor = dumped.get("critical_pressure_threshold_kg_cm2", 76.0)
     rec_comp = {
         "id": "sm-rec",
         "component": "Text",
         "text": (
-            f"• Mathematical Early Warning: Incorporates 24h Diurnal Lag (S=24) + Exogenous Customer Nominations (X₁: +20% Fertilizer HURL/NFL & CGD drawal ramp)\n"
-            f"⚠️ Critical Line-Pack Depletion Predicted: {dumped.get('minimum_predicted_pressure_kg_cm2', 73.8)} kg/cm² at T+{dumped.get('pressure_deficit_hour_ahead', 14)}h (Contract Threshold: 76.0 kg/cm²).\n"
-            f"💡 Recommended Hydraulic Setpoint: +{setpoint.get('throughput_adjustment_pct', 3.8)}% at Vijaipur Hub ({setpoint.get('action_hour', '14:00')} IST).\n"
-            f"💰 Project Sanchay Fuel Savings: {setpoint.get('fuel_gas_savings_scm_day', 18500):,} SCM/day (₹{setpoint.get('project_sanchay_daily_savings_inr', 462500):,}/day · ₹16.88 Cr/yr toward ₹600 Cr NPV)."
+            f"🔴 **Without action:** breaches the {floor:.1f} kg/cm² floor at **T+{breach_h}h ({breach_ts} IST)**, "
+            f"falling to {dumped.get('minimum_predicted_pressure_kg_cm2')} kg/cm².\n"
+            f"🟢 **With LNG swap (+{dumped.get('extra_supply_mmscmd')} MMSCMD from T+{dumped.get('extra_supply_from_hour')}h):** "
+            f"stays at or above **{dumped.get('with_swap_minimum_kg_cm2')} kg/cm²** — no breach "
+            f"(95% lower bound {dumped.get('with_swap_min_lower95_kg_cm2')} kg/cm², still above the floor).\n"
+            f"⚙️ **Setpoint:** Vijaipur throughput +{setpoint.get('throughput_adjustment_pct')}% "
+            f"({setpoint.get('current_vijaipur_throughput_mmscmd')} → {setpoint.get('recommended_vijaipur_throughput_mmscmd')} MMSCMD) "
+            f"to carry the extra Dahej gas north.\n"
+            f"Same fitted model, two supply inputs: the forecast shows what happens **if we act**."
         ),
         "variant": "body",
     }
@@ -497,4 +518,112 @@ def build_enterprise_qa_surface(data: Any, surface_id: str) -> List[types.Part]:
     return [
         wrap_a2ui_part(build_create_surface(surface_id=surface_id)),
         wrap_a2ui_part(build_update_components(surface_id=surface_id, components=components)),
+    ]
+
+
+def build_lng_surface(data: Any, surface_id: str) -> List[types.Part]:
+    """Beat 2 (Decision): landed-cost comparison of LNG supply options."""
+    d = data.model_dump() if hasattr(data, "model_dump") else data
+    rows = []
+    for o in d.get("options", []):
+        status = "Recommended" if o.get("recommended") else ("Too late" if not o.get("feasible") else "Dearer")
+        rows.append({
+            "option": o["label"],
+            "usd_mmbtu": o["delivered_cost_usd_mmbtu"],
+            "label": f"${o['delivered_cost_usd_mmbtu']:.2f}" + ("  (too late)" if not o.get("feasible") else ""),
+            "status": status,
+            "arrival": f"{o['arrival_days']} days",
+            "formula": o["formula"],
+        })
+    enc_y = {"field": "option", "type": "nominal", "title": None, "sort": {"field": "usd_mmbtu", "order": "ascending"}}
+    spec = {
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "title": {
+            "text": f"Delivered cost at {d.get('delivery_terminal', 'Dahej')} (USD/MMBtu)",
+            "subtitle": "Fixed formulas · illustrative prices",
+            "anchor": "start",
+        },
+        "width": "container",
+        "height": 170,
+        "data": {"values": rows},
+        "encoding": {"y": enc_y},
+        "layer": [
+            {
+                "mark": {"type": "bar", "cornerRadiusEnd": 4, "height": 30},
+                "encoding": {
+                    "x": {"field": "usd_mmbtu", "type": "quantitative", "title": "USD/MMBtu", "scale": {"domain": [0, 16]}},
+                    "color": {
+                        "field": "status", "type": "nominal", "title": None,
+                        "scale": {"domain": ["Recommended", "Dearer", "Too late"], "range": ["#008751", "#E65100", "#CBD5E1"]},
+                        "legend": {"orient": "bottom"},
+                    },
+                    "tooltip": [
+                        {"field": "option", "title": "Option"},
+                        {"field": "formula", "title": "Formula"},
+                        {"field": "usd_mmbtu", "title": "USD/MMBtu", "format": ".2f"},
+                        {"field": "arrival", "title": "Arrival"},
+                    ],
+                },
+            },
+            {
+                "mark": {"type": "text", "align": "left", "dx": 6, "fontWeight": "bold", "fontSize": 13},
+                "encoding": {
+                    "x": {"field": "usd_mmbtu", "type": "quantitative"},
+                    "text": {"field": "label"},
+                },
+            },
+        ],
+    }
+    lines = []
+    for o in sorted(d.get("options", []), key=lambda x: x["delivered_cost_usd_mmbtu"]):
+        mark = "✅" if o.get("recommended") else ("⏱️" if not o.get("feasible") else "•")
+        lines.append(f"{mark} {o['label']}: ${o['delivered_cost_usd_mmbtu']:.2f}/MMBtu · arrives in {o['arrival_days']} days"
+                     + ("" if o.get("feasible") else " — too late"))
+    comps = [
+        {"id": "root", "component": "Card", "child": "lng-col"},
+        {"id": "lng-col", "component": "Column",
+         "children": ["lng-title", "lng-sub", "lng-chart", "lng-div", "lng-rec", "lng-opts", "lng-note"]},
+        {"id": "lng-title", "component": "Text", "variant": "h3",
+         "text": f"💱 Cheapest way to cover the {d.get('shortfall_mmscmd')} MMSCMD shortfall"},
+        {"id": "lng-sub", "component": "Text", "variant": "caption",
+         "text": f"Landed-cost engine (fixed formulas) · FX ₹{d.get('fx_inr_per_usd')}/USD · cargo {d.get('cargo_size_mmbtu', 0)/1e6:.1f} TBtu · {d.get('as_of')}"},
+        {"id": "lng-chart", "component": "VegaChart", "spec": spec, "height": 170},
+        {"id": "lng-div", "component": "Divider"},
+        {"id": "lng-rec", "component": "Text", "variant": "body",
+         "text": (f"**Recommended: {d.get('recommended_option_label')}** at ${d.get('recommended_delivered_cost_usd_mmbtu'):.2f}/MMBtu — "
+                  f"**₹{d.get('saving_vs_spot_inr_crore')} Cr cheaper** than a spot cargo (saves ${d.get('saving_vs_spot_usd_mmbtu'):.2f}/MMBtu).\n"
+                  f"{d.get('execution_plan')}")},
+        {"id": "lng-opts", "component": "Text", "variant": "body", "text": "\n".join(lines)},
+        {"id": "lng-note", "component": "Text", "variant": "caption", "text": d.get("disclaimer", "")},
+    ]
+    return [
+        wrap_a2ui_part(build_create_surface(surface_id=surface_id)),
+        wrap_a2ui_part(build_update_components(surface_id=surface_id, components=comps)),
+    ]
+
+
+def build_decision_surface(data: Any, surface_id: str) -> List[types.Part]:
+    """Beat 4 (Action): decision brief link + SAP order on one card."""
+    d = data.model_dump() if hasattr(data, "model_dump") else data
+    comps = [
+        {"id": "root", "component": "Card", "child": "dec-col"},
+        {"id": "dec-col", "component": "Column",
+         "children": ["dec-title", "dec-sub", "dec-story", "dec-div", "dec-sap", "dec-link"]},
+        {"id": "dec-title", "component": "Text", "variant": "h3", "text": "✅ Decision briefed and actioned"},
+        {"id": "dec-sub", "component": "Text", "variant": "caption",
+         "text": f"Report {d.get('report_id')} · {d.get('sap_system')}"},
+        {"id": "dec-story", "component": "Text", "variant": "body",
+         "text": (f"1️⃣ **Problem:** {d.get('shortfall_mmscmd')} MMSCMD shortfall on HVJ North\n"
+                  f"2️⃣ **Decision:** {d.get('chosen_option')} — ₹{d.get('saving_vs_spot_inr_crore')} Cr cheaper than spot\n"
+                  f"3️⃣ **Proof:** breach at T+{d.get('breach_hour_without_action')}h avoided; line-pack held ≥ {d.get('min_pressure_with_action_kg_cm2')} kg/cm²\n"
+                  f"4️⃣ **Action:** SAP order **{d.get('sap_work_order_id')}** · {d.get('sap_order_status')}")},
+        {"id": "dec-div", "component": "Divider"},
+        {"id": "dec-sap", "component": "Text", "variant": "body",
+         "text": "\n".join(f"• {a}" for a in d.get("sap_actions", [])) + f"\n• Audit hash: {d.get('audit_hash')}"},
+        {"id": "dec-link", "component": "Text", "variant": "body",
+         "text": f"📑 [Open the executive decision brief]({d.get('report_url')})"},
+    ]
+    return [
+        wrap_a2ui_part(build_create_surface(surface_id=surface_id)),
+        wrap_a2ui_part(build_update_components(surface_id=surface_id, components=comps)),
     ]

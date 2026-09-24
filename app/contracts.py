@@ -85,6 +85,7 @@ class GridHealthAuditResponse(BaseModel):
     environmental_alerts: List[EnvironmentalRiskAlert]
     monitored_corridors: List[str]
     weathernext_summary: Optional[Dict[str, Any]] = None
+    demand_shortfall: Optional[Dict[str, Any]] = None
     a2ui_map_payload: Dict[str, Any]
 
 
@@ -125,6 +126,8 @@ class SetpointRecommendation(BaseModel):
     hydraulic_wave_speed_km_h: float = 35.0
     transit_distance_km: float = 380.0
     throughput_adjustment_pct: float = 3.8
+    current_vijaipur_throughput_mmscmd: float = 105.3
+    recommended_vijaipur_throughput_mmscmd: float = 109.3
     current_vijaipur_discharge_kg_cm2: float = 82.5
     recommended_vijaipur_discharge_kg_cm2: float = 85.6
     fuel_gas_savings_scm_day: float = 18500.0
@@ -134,20 +137,91 @@ class SetpointRecommendation(BaseModel):
 
 
 class SarimaxForecastResponse(BaseModel):
-    model_type: str = "Econometric SARIMAX"
+    model_type: str = "SARIMAX(1,1,0)×(1,0,0)₂₄"
     target_station: str = "Chhainsa_CS"
-    aic: float = 98.73
-    model_aic: float = 98.73
-    mape_backtest_pct: float = 1.42
+    fitted_on_hours: int = 72
+    aic: float = 0.0
+    model_aic: float = 0.0
+    mape_backtest_pct: float = 0.0
+    linepack_sensitivity_beta: Optional[float] = None
+    model_params: Dict[str, float] = Field(default_factory=dict)
     horizon_hours: int = 24
-    pressure_deficit_hour_ahead: int = 14
-    critical_pressure_threshold_kg_cm2: float = 75.0
-    projected_tadir_minimum_kg_cm2: float = 74.2
-    minimum_predicted_pressure_kg_cm2: float = 74.2
+    last_observed_pressure_kg_cm2: Optional[float] = None
+    pressure_deficit_hour_ahead: Optional[int] = None
+    pressure_deficit_timestamp: Optional[str] = None
+    critical_pressure_threshold_kg_cm2: float = 76.0
+    projected_tadir_minimum_kg_cm2: float = 0.0
+    minimum_predicted_pressure_kg_cm2: float = 0.0
+    with_swap_minimum_kg_cm2: Optional[float] = None
+    with_swap_breach: bool = False
+    extra_supply_mmscmd: float = 0.0
+    extra_supply_from_hour: int = 6
     forecast_records: List[Dict[str, Any]] = Field(default_factory=list)
     hourly_forecast: List[Dict[str, Any]] = Field(default_factory=list)
+    # PPAC-style evidence: history on the chart, honest hold-out validation, detected daily cycle
+    history: List[Dict[str, Any]] = Field(default_factory=list)
+    last_observed_timestamp: Optional[str] = None
+    with_swap_min_lower95_kg_cm2: Optional[float] = None
+    band_halfwidth_95_t1: Optional[float] = None
+    band_halfwidth_95_t24: Optional[float] = None
+    backtest_train_hours: Optional[int] = None
+    backtest_holdout_hours: Optional[int] = None
+    backtest_mape_pct: Optional[float] = None
+    backtest_max_abs_error_kg_cm2: Optional[float] = None
+    daily_cycle_amplitude_kg_cm2: Optional[float] = None
+    daily_peak_hour: Optional[int] = None
+    daily_trough_hour: Optional[int] = None
     setpoint_recommendation: SetpointRecommendation
     a2ui_forecast_chart: Optional[Dict[str, Any]] = None
+
+
+# =============================================================================
+# BEAT 2: COMMERCIAL DECISION - LNG SUPPLY OPTIONS (deterministic landed cost)
+# =============================================================================
+
+class LngSupplyOptionsResponse(BaseModel):
+    as_of: str
+    disclaimer: str
+    delivery_terminal: str
+    shortfall_mmscmd: float
+    benchmarks_usd_mmbtu: Dict[str, float]
+    fx_inr_per_usd: float
+    cargo_size_mmbtu: float
+    terminal_inventory_cover_days: int
+    options: List[Dict[str, Any]]
+    recommended_option_id: str
+    recommended_option_label: str
+    recommended_delivered_cost_usd_mmbtu: float
+    benchmark_option_label: str
+    saving_vs_spot_usd_mmbtu: float
+    saving_vs_spot_usd_mn: float
+    saving_vs_spot_inr_crore: float
+    dahej_sendout_increase_mmscmd: float
+    sendout_effective_hour_ahead: int
+    cargo_covers_days: float
+    execution_plan: str
+
+
+# =============================================================================
+# BEAT 4: ACTION - DECISION BRIEF + SAP ORDER (one card)
+# =============================================================================
+
+class DecisionBriefResponse(BaseModel):
+    headline: str
+    shortfall_mmscmd: float
+    chosen_option: str
+    saving_vs_spot_inr_crore: float
+    breach_hour_without_action: Optional[int] = None
+    min_pressure_without_action_kg_cm2: float
+    min_pressure_with_action_kg_cm2: float
+    vijaipur_throughput_adjustment_pct: float
+    report_url: str
+    report_id: str
+    sap_work_order_id: str
+    sap_system: str
+    sap_order_status: str
+    sap_actions: List[str]
+    audit_hash: str
 
 
 # =============================================================================

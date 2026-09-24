@@ -48,9 +48,11 @@ def get_agent_card() -> Dict[str, Any]:
         "ui_extension": A2UI_V09_EXTENSION_URI,
         "governing_entity": "GAIL (India) Limited",
         "runtime_target": "agent_runtime",
-        "description": "Autonomous OT/IT agent for natural gas pipeline grid monitoring, WeatherNext 3 ensemble forecasting, SARIMAX linepack forecasting, and SAP S/4HANA work order staging.",
+        "description": "From a morning demand change to an actioned decision: nominations shortfall, LNG sourcing comparison, fitted SARIMAX line-pack forecast, executive brief and SAP order.",
         "skills": [
             "audit_grid_and_weather_risk",
+            "evaluate_lng_supply_options",
+            "publish_decision_brief",
             "get_weathernext_forecast",
             "query_scada_telemetry",
             "run_sarimax_linepack_forecast",

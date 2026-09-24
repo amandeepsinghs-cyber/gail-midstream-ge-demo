@@ -44,7 +44,11 @@ from app.integration.tools import (
     PENDING_REPORT_KEY,
     PENDING_SAP_KEY,
     PENDING_ENTERPRISE_QA_KEY,
+    PENDING_LNG_KEY,
+    PENDING_DECISION_KEY,
     audit_grid_and_weather_risk,
+    evaluate_lng_supply_options,
+    publish_decision_brief,
     get_weathernext_forecast,
     query_scada_telemetry,
     run_sarimax_linepack_forecast,
@@ -64,6 +68,8 @@ from app.render.a2ui_emit import (
     build_report_surface,
     build_sap_surface,
     build_enterprise_qa_surface,
+    build_lng_surface,
+    build_decision_surface,
 )
 
 logger = logging.getLogger(__name__)
@@ -104,10 +110,18 @@ def emit_a2ui_surface(
     pending_report = _take_pending(callback_context, PENDING_REPORT_KEY)
     pending_sap = _take_pending(callback_context, PENDING_SAP_KEY)
     pending_qa = _take_pending(callback_context, PENDING_ENTERPRISE_QA_KEY)
+    pending_lng = _take_pending(callback_context, PENDING_LNG_KEY)
+    pending_decision = _take_pending(callback_context, PENDING_DECISION_KEY)
 
     parts: list[Any] = []
 
-    if pending_sarimax:
+    # One card per turn. The decision brief internally runs the forecast/report/SAP tools,
+    # so it takes priority over their pending surfaces.
+    if pending_decision:
+        parts = build_decision_surface(pending_decision, surface_id)
+    elif pending_lng:
+        parts = build_lng_surface(pending_lng, surface_id)
+    elif pending_sarimax:
         parts = build_sarimax_surface(pending_sarimax, surface_id)
     elif pending_weathernext:
         parts = build_weathernext_surface(pending_weathernext, surface_id)
@@ -220,56 +234,59 @@ def _remove_datapart_blobs(text: str) -> str:
 
 
 GAIL_SYSTEM_INSTRUCTION = """
-You are the GAIL (India) Limited Enterprise Data, Econometric SARIMAX Analytics & Executive Reporting Agent,
-deployed natively in Google Gemini Enterprise.
+You are the GAIL (India) Limited Grid & Supply Decision Agent in Google Gemini Enterprise.
+You help GAIL teams go from a morning demand change to an actioned decision in one conversation.
+You serve GAIL's 18,700 km natural gas grid. Never call yourself a MoPNG or PPAC agent.
 
-You serve as the sovereign intelligence and analytics partner for GAIL (India) Limited's National Gas Management Centre (NGMC),
-Commercial Gas Management System (GMS), Enterprise Cloud Historian, and RISE with SAP S/4HANA Cloud (Project Navodaya).
-Never refer to yourself as a MoPNG or PPAC agent; you exclusively serve GAIL (India) Limited's 18,700 km natural gas transmission grid.
+THE STORYLINE (four beats; each beat's output feeds the next):
 
-CORE 4-STEP ENTERPRISE DATA LIFECYCLE & TOOL ROUTING:
+1. PROBLEM - `audit_grid_and_weather_risk`
+   Call when the user asks about grid flows, corridor volumes, customer nominations or the data lake.
+   Lead your reply with the shortfall in one sentence (e.g. "Tomorrow's nominations leave a 4.0 MMSCMD
+   shortfall on HVJ North from 08:00"), then name the drivers (Fertilizer +20%, CGD +12%).
 
-1. STEP 1 — ACCESS ENTERPRISE DATA & CORRIDOR INVENTORY (`audit_grid_and_weather_risk`):
-   - Call `audit_grid_and_weather_risk` whenever the user asks to inspect/access the GAIL Enterprise Data Lake (`gs://gail-midstream-ge-demo-datalake`),
-     Gas Management System (GMS), regional pipeline corridor volumes (18,700 km network, 122.18 MMSCMD across HVJ, Urja Ganga / JHBDPL, DBNPL, MNJPL),
-     or sectoral customer off-take nominations (Fertilizer HURL/NFL/IFFCO 38.4 MMSCMD, CGD 28.2 MMSCMD, Power 24.8 MMSCMD, Pata Petrochemicals & Industrial 30.78 MMSCMD).
+2. DECISION - `evaluate_lng_supply_options`
+   Call when the user asks how to cover the shortfall, the cheapest option, LNG sourcing, cargo swaps,
+   Henry Hub or JKM. Lead with the recommended option and the Rs Crore saving versus spot. Mention in
+   one line why the other options lost (too expensive, or arrives too late). Say prices are illustrative.
 
-2. STEP 2 — SHOW DATA & PLOT 72-HOUR OPERATIONAL TIME SERIES (`query_scada_telemetry`):
-   - Call `query_scada_telemetry` whenever the user asks to view, query, or plot the 72-hour historical operational time series
-     (Line-Pack Pressure in kg/cm², Gas Transmission Flow in MMSCMD, and Compressor Thermal Efficiency Index in °C) for Chhainsa or Vijaipur.
-   - Always frame the data source as GAIL's **Enterprise Cloud Historian & Gas Management System (GMS) Data Lake** (avoid claiming direct air-gapped OT/SCADA network bypass).
+3. PROOF - `run_sarimax_linepack_forecast`
+   Call when the user asks whether the grid can carry it, or for a forecast, SARIMAX, line-pack or setpoint.
+   Show the model WORKFLOW as a short numbered list, using the tool's numbers exactly:
+     1. Loaded <fitted_on_hours>h of Chhainsa line-pack from the Enterprise Cloud Historian.
+     2. Detected the daily pack/draft cycle (~<daily_cycle_amplitude_kg_cm2> kg/cm2 swing).
+     3. Fitted <model_type>; learned sensitivity beta = <linepack_sensitivity_beta> kg/cm2 per MMSCMD-hour.
+     4. Validated: trained on the first <backtest_train_hours>h, predicted the last <backtest_holdout_hours>h
+        with <backtest_mape_pct>% error.
+     5. Forecast 24h for two futures with 80% / 95% confidence cones.
+   Then the verdict in two lines: without action the line-pack breaches the 76.0 kg/cm2 floor at
+   <pressure_deficit_timestamp HH:MM> (T+<breach hour>); with the LNG swap it stays at or above
+   <with_swap_minimum_kg_cm2> kg/cm2 (even the 95% lower bound stays above the floor). Then the Vijaipur setpoint.
 
-3. STEP 3 — RUN DETERMINISTIC SARIMAX MODEL & PROJECT SANCHAY OPTIMIZATION (`run_sarimax_linepack_forecast`):
-   - Call `run_sarimax_linepack_forecast` whenever the user asks to run a forecast, time-series model, SARIMAX analysis, or compressor setpoint calculation.
-   - Explicitly explain the mathematical early-warning mechanism: unlike basic univariate ARIMA (which only extrapolates past pressure Y_t),
-     GAIL's Multivariate Box-Jenkins SARIMAX (1,1,1)×(1,1,1)₂₄ combines **24-Hour Diurnal Seasonality (S=24)** with **Exogenous Leading Regressors (X₁)**—specifically
-     scheduled +20% Fertilizer (HURL/NFL) and +12% CGD customer nomination surges—to deterministically predict the **73.8 kg/cm² line-pack deficit at T+14h**
-     (2.2 kg/cm² below the 76.0 kg/cm² contract threshold) hours before the physical pressure wave hits the pipe wall.
-   - Provide the deterministic hydraulic setpoint recommendation: **+3.8% throughput calibration at Vijaipur Hub at 14:00 IST**, saving **18,500 SCM/day (₹16.88 Crore/yr)**
-     of internal fuel gas under **Project Sanchay (₹600 Crore NPV mandate)**.
+4. ACTION - `publish_decision_brief`
+   Call when the user asks to brief management, generate/compile/publish a report, or raise/stage
+   an SAP order - including when both are asked together. It does both in one step.
+   Give the SAP order ID and ALWAYS include the report as a clickable markdown link:
+   [Open the executive decision brief](<report_url>).
 
-4. STEP 4 — MAKE AN EXHAUSTIVE EXECUTIVE REPORT (`compile_executive_briefing`):
-   - Call `compile_executive_briefing` whenever the user asks to compile, generate, or publish an Executive Report, Ready Reckoner, or Management Briefing.
-   - Summarize the 6-Part Exhaustive GAIL Executive Report (Parts A–F covering 18,700 km Corridor Utilization, Sectoral Customer Nominations X₁, 72h Cloud Historian Time Series,
-     24h SARIMAX Forecast & 95% Confidence Intervals, Project Sanchay ₹600 Cr NPV Economics, and Project Navodaya SAP Governance).
-   - In your prose reply, ALWAYS provide the clickable link directly to the report: [Open 6-Part GAIL Executive Report](<compiled_html_path>).
+BACKUP TOOLS (only when explicitly asked):
+- `query_scada_telemetry`: 72h historian chart for Chhainsa (pressure and flow).
+- `get_weathernext_forecast`: weather for a pipeline location.
+- `query_enterprise_knowledge`: corporate, Project Sanchay and ESG questions.
+- `compile_executive_briefing` / `stage_sap_maintenance_order`: report only / SAP only.
 
-5. OPTIONAL / FOLLOW-UP TOOLS:
-   - `stage_sap_maintenance_order`: Stages preventive work order #480291 directly into RISE with SAP S/4HANA Cloud (Project Navodaya).
-   - `query_enterprise_knowledge`: Answers corporate, financial, and ESG queries under GAIL AI Tarang (122.18 MMSCMD transmission, 2035 Net Zero Scope 1 & 2 target).
-   - `get_weathernext_forecast`: Only call if the user explicitly asks a standalone weather question.
-
-SURFACES & DISPLAY:
-Interactive A2UI v0.9 charts and cards are attached automatically to your response.
-Confirm in one or two clear sentences that the interactive chart or report card is displayed below.
-NEVER emit raw <a2a_datapart_json> tags in your prose.
+STYLE:
+- Use the numbers returned by the tools exactly; never invent or recompute them.
+- Keep replies to 3-5 short lines (Beat 3 may use the 5-step workflow list plus the verdict).
+  The interactive card is attached automatically below your reply;
+  say so in one short phrase. NEVER write raw <a2a_datapart_json> tags.
 """
 
 # Modern ADK Root Agent Definition
 try:
     root_agent = Agent(
         name="gail_grid_advisor",
-        description="GAIL Autonomous Pipeline Grid, Predictive Analytics & Executive Advisory Agent for Gemini Enterprise",
+        description="GAIL Grid & Supply Decision Agent: nominations shortfall, LNG sourcing, fitted SARIMAX line-pack forecast, executive brief and SAP order",
         model=Gemini(
             model=MODEL,
             retry_options=types.HttpRetryOptions(attempts=3),
@@ -280,9 +297,11 @@ try:
         instruction=GAIL_SYSTEM_INSTRUCTION,
         tools=[
             audit_grid_and_weather_risk,
+            evaluate_lng_supply_options,
+            run_sarimax_linepack_forecast,
+            publish_decision_brief,
             get_weathernext_forecast,
             query_scada_telemetry,
-            run_sarimax_linepack_forecast,
             compile_executive_briefing,
             stage_sap_maintenance_order,
             query_enterprise_knowledge,
@@ -311,13 +330,36 @@ class GailPipelineAgent:
             "run_sarimax_linepack_forecast": run_sarimax_linepack_forecast,
             "compile_executive_briefing": compile_executive_briefing,
             "stage_sap_maintenance_order": stage_sap_maintenance_order,
-            "query_enterprise_knowledge": query_enterprise_knowledge
+            "query_enterprise_knowledge": query_enterprise_knowledge,
+            "evaluate_lng_supply_options": evaluate_lng_supply_options,
+            "publish_decision_brief": publish_decision_brief,
         }
 
     def execute_prompt(self, user_prompt: str) -> Dict[str, Any]:
         """Routes conversational user prompts to appropriate tool execution and narrative responses."""
         p_lower = user_prompt.lower()
-        
+
+        # BEAT 4: brief management + SAP order in one step
+        if ("brief" in p_lower and "management" in p_lower) or ("brief" in p_lower and "sap" in p_lower):
+            dec = publish_decision_brief()
+            return {
+                "act": "BEAT 4: Action - Decision Brief + SAP Order",
+                "narrative": f"{dec.headline} SAP order {dec.sap_work_order_id}. Report: {dec.report_url}",
+                "data": dec.model_dump(),
+            }
+
+        # BEAT 2: cheapest way to cover the shortfall
+        if "cheapest" in p_lower or "lng" in p_lower or "cover" in p_lower or "cargo" in p_lower:
+            lng = evaluate_lng_supply_options()
+            return {
+                "act": "BEAT 2: Decision - LNG Supply Options",
+                "narrative": (
+                    f"Recommended: {lng.recommended_option_label} at ${lng.recommended_delivered_cost_usd_mmbtu:.2f}/MMBtu, "
+                    f"Rs {lng.saving_vs_spot_inr_crore} Cr cheaper than spot."
+                ),
+                "data": lng.model_dump(),
+            }
+
         # ACT 4: Executive PDF/HTML briefing report
         if "report" in p_lower or "briefing" in p_lower or "compile" in p_lower:
             report = compile_executive_briefing()
@@ -387,10 +429,11 @@ class GailPipelineAgent:
             return {
                 "act": "ACT 3: Econometric SARIMAX Forecasting",
                 "narrative": (
-                    f"Multivariate Box-Jenkins SARIMAX demand forecast computed. "
-                    f"Linepack deficit predicted at T+{fc.pressure_deficit_hour_ahead}h ({fc.minimum_predicted_pressure_kg_cm2} kg/cm²). "
-                    f"Hydraulic Advisory: Adjust Vijaipur Hub compressor discharge by +{setpoint.throughput_adjustment_pct}% at 14:00 IST. "
-                    f"Project Sanchay Fuel Savings: 18,500 SCM/day (~₹462,500/day, ₹16.88 Cr/yr)."
+                    f"Loaded {fc.fitted_on_hours}h historian data; detected ~{fc.daily_cycle_amplitude_kg_cm2} kg/cm² daily cycle; "
+                    f"fitted {fc.model_type}; back-test error {fc.backtest_mape_pct}% on last {fc.backtest_holdout_hours}h. "
+                    f"Without action: breach of 76.0 kg/cm² at T+{fc.pressure_deficit_hour_ahead}h "
+                    f"(min {fc.minimum_predicted_pressure_kg_cm2} kg/cm²). With LNG swap: min {fc.with_swap_minimum_kg_cm2} kg/cm². "
+                    f"Vijaipur throughput +{setpoint.throughput_adjustment_pct}%."
                 ),
                 "data": fc.model_dump(),
                 "a2ui_card": fc.a2ui_forecast_chart

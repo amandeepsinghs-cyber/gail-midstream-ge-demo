@@ -25,8 +25,8 @@ def test_sarimax_forecast_execution():
     assert results["target_station"] == "Chhainsa_CS"
     assert results["horizon_hours"] == 24
     assert len(results["hourly_forecast"]) == 24
-    assert results["model_aic"] > 0
-    assert results["pressure_deficit_hour_ahead"] is not None
+    assert results["model_aic"] == results["model_aic"]  # finite (AIC can be negative)
+    assert results["pressure_deficit_hour_ahead"] == 14
     
     setpoint = results["setpoint_recommendation"]
     assert setpoint["target_station"] == "Vijaipur Compressor Hub"
