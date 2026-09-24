@@ -17,9 +17,9 @@ URL = ("https://asia-south1-aiplatform.googleapis.com/reasoningEngines/v1/projec
 
 QUESTIONS = [
     ("Q1", "What is the impact of the Qatar force majeure on our winter gas supply?"),
-    ("Q2", "Check our own position: inventory, customer commitments and what's already in SAP."),
+    ("Q2", "Check our own position: inventory, customer commitments."),
     ("Q3", "What is gas costing today, and what does that mean for our contracts and our budget?"),
-    ("Q4", "How did we get here? Show me the last 5 years."),
+    ("Q4", "How have gas prices moved over the last 5 years, and what drove them?"),
     ("Q5", "What do the experts expect?"),
     ("Q6", "Run a Monte Carlo simulation of winter prices and test three options against our risk limit and deadlines: lock in now, lock in half, or wait. What do you recommend?"),
     ("Q7", "Prepare the approval and stage it in SAP."),

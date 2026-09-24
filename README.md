@@ -24,9 +24,9 @@ A Gemini Enterprise agent that helps GAIL's experts make one critical, high-valu
 | # | Stage | Ask | Data joined | The "so what" (24 Sep rehearsal, live prices) |
 |---|---|---|---|---|
 | 1 | Data | **What is the impact of the Qatar force majeure on our winter gas supply?** | 🏢 contract book + supply plan · 🌐 news | 6 cargoes (19 TBtu) short Dec–Feb; ₹184 Cr per $1/MMBtu |
-| 2 | Data | **Check our own position: inventory, customer commitments and what's already in SAP.** | 🏢 Dahej inventory, customers, SAP open orders and budget, lead time, delegation of authority | December cargoes must be contracted by **17 Oct (23 days)**; tanks can't absorb a missed month; no SAP order covers the gap |
+| 2 | Data | **Check our own position: inventory, customer commitments.** | 🏢 Dahej inventory, customers, SAP open orders and budget, lead time, delegation of authority | December cargoes must be contracted by **17 Oct (23 days)**; tanks can't absorb a missed month; no SAP order covers the gap |
 | 3 | Data | **What is gas costing today, and what does that mean for our contracts and our budget?** | 🏢 contract formulas + SAP budget · 🌐 live prices + futures | US contract cargo ~$10.9 vs ~$24.9 spot; Qatar outage ≈ ₹2,060 Cr extra; lock-in ₹540 Cr over budget |
-| 4 | Analysis | **How did we get here? Show me the last 5 years.** | 🌐 5-year weekly history | 2022 and 2026 spikes; TTF volatility ~90% a year |
+| 4 | Analysis | **How have gas prices moved over the last 5 years, and what drove them?** | 🌐 5-year weekly history | 2022 and 2026 spikes; TTF volatility ~90% a year |
 | 5 | Analysis | **What do the experts expect?** | 🌐 analyst forecasts | 2027 consensus well below today, but a wide spread |
 | 6 | Analysis → Decision | **Run a Monte Carlo simulation of winter prices and test three options against our risk limit and deadlines: lock in now, lock in half, or wait. What do you recommend?** | 🌐 futures, volatility, consensus × 🏢 everything above | 10,000 paths: waiting saves ~₹118 Cr on average but the worst case is +₹2,312 Cr, beyond the ₹800 Cr limit → **lock in all 6** |
 | 7 | Action | **Prepare the approval and stage it in SAP.** | 🏢 SAP + delegation of authority | Approver picked by value; HTML memo in GCS; SAP purchase requisition **AWAITING APPROVAL** |

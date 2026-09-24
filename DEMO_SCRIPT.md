@@ -47,7 +47,7 @@ Every card tags each number with where it came from: 🏢 = GAIL data, 🌐 = ou
 ## Q2 · Data: our own position (the internal-data moment)
 
 **Prompt:**
-> Check our own position: inventory, customer commitments and what's already in SAP.
+> Check our own position: inventory, customer commitments.
 
 **What appears:** "Our own position: inventory, customers, SAP" card, with a deadline chart.
 - ⏱️ **Deadline: the December cargoes must be contracted by 17 Oct, 23 days from today** (45-day lead time).
@@ -82,7 +82,7 @@ Every card tags each number with where it came from: 🏢 = GAIL data, 🌐 = ou
 ## Q4 · Analysis: context
 
 **Prompt:**
-> How did we get here? Show me the last 5 years.
+> How have gas prices moved over the last 5 years, and what drove them?
 
 **What appears:** 5-year weekly chart of TTF, Henry Hub and Brent: the 2022 spike, today's spike, and TTF volatility of ~90% a year.
 
