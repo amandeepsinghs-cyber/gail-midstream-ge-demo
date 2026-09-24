@@ -100,43 +100,71 @@ def _default_capabilities() -> AgentCapabilities:
     )
 
 
+def _resolve_app_url(app_url: str | None) -> str:
+    """Resolve the public base URL advertised inside the agent card."""
+    if app_url:
+        return app_url
+    if env_url := os.getenv("APP_URL"):
+        return env_url
+
+    agent_engine_id = os.getenv("GOOGLE_CLOUD_AGENT_ENGINE_ID")
+    project = os.getenv("GOOGLE_CLOUD_PROJECT")
+    location = os.getenv("GOOGLE_CLOUD_AGENT_ENGINE_LOCATION", "asia-south1")
+    if agent_engine_id and project and location:
+        return (
+            f"https://{location}-aiplatform.googleapis.com/reasoningEngines/v1"
+            f"/projects/{project}/locations/{location}"
+            f"/reasoningEngines/{agent_engine_id}/api"
+        )
+
+    return "http://0.0.0.0:8000"
+
+
 async def attach_a2a_routes(
     app: FastAPI,
     *,
     agent: BaseAgent,
     runner: Runner,
     task_store: TaskStore,
-    rpc_path: str = "/a2a",
+    rpc_path: str,
     capabilities: AgentCapabilities | None = None,
-    card_modifier: Any | None = None,
-    executor: A2aAgentExecutor | None = None,
+    agent_version: str | None = None,
+    app_url: str | None = None,
+    executor: Any | None = None,
 ) -> None:
-    """Registers agent-card and JSON-RPC endpoints on the given FastAPI app."""
-    url = f"{rpc_path.rstrip('/')}"
+    """Register A2A routes (JSON-RPC + agent-card endpoints) under ``rpc_path``."""
+    resolved_app_url = _resolve_app_url(app_url)
+    resolved_agent_version = agent_version or os.getenv("AGENT_VERSION", "1.0.0")
+    resolved_capabilities = capabilities or _default_capabilities()
 
-    card_builder = (
-        AgentCardBuilder(agent=agent, capabilities=capabilities or _default_capabilities())
-        .with_url(url)
-    )
+    agent_card = await AgentCardBuilder(
+        agent=agent,
+        capabilities=resolved_capabilities,
+        rpc_url=f"{resolved_app_url}{rpc_path}",
+        agent_version=resolved_agent_version,
+    ).build()
 
-    modifier = card_modifier or _add_v0_3_compat_interface
-    card_builder = card_builder.with_card_modifier(modifier)
-    agent_card = await card_builder.build()
+    resolved_executor = executor or A2aAgentExecutor(runner=runner)
+    if hasattr(resolved_executor, "set_agent_card"):
+        resolved_executor.set_agent_card(agent_card)
 
-    active_executor = executor or A2aAgentExecutor(runner=runner)
     request_handler = DefaultRequestHandler(
-        agent_executor=active_executor,
+        agent_executor=resolved_executor,
         task_store=task_store,
-    )
-
-    card_routes = create_agent_card_routes(
         agent_card=agent_card,
-        card_path=f"{rpc_path.rstrip('/')}/{AGENT_CARD_WELL_KNOWN_PATH.lstrip('/')}",
-    )
-    jsonrpc_routes = create_jsonrpc_routes(
-        request_handler=request_handler,
-        rpc_path=rpc_path,
-        context_builder=_A2AServerCallContextBuilder(),
     )
 
-    add_a2a_routes_to_fastapi(app, card_routes=card_routes, jsonrpc_routes=jsonrpc_routes)
+    add_a2a_routes_to_fastapi(
+        app,
+        agent_card_routes=create_agent_card_routes(
+            agent_card,
+            card_modifier=_add_v0_3_compat_interface,
+            card_url=f"{rpc_path}{AGENT_CARD_WELL_KNOWN_PATH}",
+        ),
+        jsonrpc_routes=create_jsonrpc_routes(
+            request_handler,
+            rpc_url=rpc_path,
+            context_builder=_A2AServerCallContextBuilder(),
+            enable_v0_3_compat=True,
+        ),
+    )

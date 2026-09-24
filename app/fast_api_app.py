@@ -15,11 +15,12 @@
 """FastAPI & A2A Server for GAIL Autonomous Pipeline Grid Agent.
 
 Exposes:
+  - ADK Reasoning Engine endpoints: /api/reasoning_engine, /api/stream_reasoning_engine
   - Agent Card: GET /a2a/gail_grid_advisor/.well-known/agent-card.json
   - A2A JSON-RPC 0.3 / 1.0: POST /a2a/gail_grid_advisor
   - Direct Prompt: POST /api/v1/prompt
   - Health: GET /health
-  - Demo Console UI: GET /
+  - Demo Console UI: GET /demo
 """
 
 import contextlib
@@ -28,21 +29,33 @@ from pathlib import Path
 from collections.abc import AsyncIterator
 
 from a2a.server.tasks import InMemoryTaskStore
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from google.adk.cli.fast_api import get_fast_api_app
+from google.adk.runners import Runner
 from pydantic import BaseModel
 
 from app.agent import GailPipelineAgent
 from app.app_utils import services
 from app.app_utils.a2a import attach_a2a_routes
-from app.app_utils.reasoning_engine_adapter import attach_reasoning_engine_routes
+from app.app_utils.reasoning_engine_adapter import (
+    attach_reasoning_engine_routes,
+)
+
+load_dotenv()
+otel_to_cloud = os.environ.get(
+    "GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY", ""
+).lower() in ("true", "1")
+allow_origins = (
+    os.getenv("ALLOW_ORIGINS", "").split(",") if os.getenv("ALLOW_ORIGINS") else None
+)
 
 AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output_artifacts"
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 
-agent = GailPipelineAgent()
+legacy_agent = GailPipelineAgent()
 
 
 class PromptPayload(BaseModel):
@@ -51,56 +64,48 @@ class PromptPayload(BaseModel):
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    try:
-        from app.agent import app as adk_app
-        from app.agent import root_agent
-        from google.adk.runners import Runner
+    from app.agent import app as adk_app
+    from app.agent import root_agent
 
-        if adk_app and root_agent:
-            runner = Runner(
-                app=adk_app,
-                session_service=services.get_session_service(),
-                artifact_service=services.get_artifact_service(),
-                auto_create_session=True,
-            )
-            app.state.runner = runner
-            app.state.agent_app_name = adk_app.name
+    runner = Runner(
+        app=adk_app,
+        session_service=services.get_session_service(),
+        artifact_service=services.get_artifact_service(),
+        auto_create_session=True,
+    )
+    app.state.runner = runner
+    app.state.agent_app_name = adk_app.name
 
-            from app.integration.agent_card import build_agent_capabilities
-            from app.integration.executor import A2uiNegotiatingExecutor
+    from app.integration.agent_card import build_agent_capabilities
+    from app.integration.executor import A2uiNegotiatingExecutor
 
-            await attach_a2a_routes(
-                app,
-                agent=root_agent,
-                runner=runner,
-                task_store=InMemoryTaskStore(),
-                rpc_path=f"/a2a/{adk_app.name}",
-                capabilities=build_agent_capabilities(),
-                executor=A2uiNegotiatingExecutor(runner=runner),
-            )
-    except Exception as e:
-        print(f"Warning: A2A route auto-attach skipped: {e}")
-
+    await attach_a2a_routes(
+        app,
+        agent=root_agent,
+        runner=runner,
+        task_store=InMemoryTaskStore(),
+        rpc_path=f"/a2a/{adk_app.name}",
+        capabilities=build_agent_capabilities(),
+        executor=A2uiNegotiatingExecutor(runner=runner),
+    )
     yield
 
 
-app = FastAPI(
-    title="GAIL Autonomous Pipeline Grid, Predictive Analytics & Executive Advisory Agent",
-    description="Gemini Enterprise End-to-End Agentic AI Microservice for GAIL (India) Limited",
-    version="1.0.0",
+app: FastAPI = get_fast_api_app(
+    agents_dir=AGENT_DIR,
+    web=True,
+    artifact_service_uri=services.ARTIFACT_SERVICE_URI,
+    allow_origins=allow_origins,
+    session_service_uri=services.SESSION_SERVICE_URI,
+    otel_to_cloud=otel_to_cloud,
     lifespan=lifespan,
 )
+app.title = "GAIL Autonomous Pipeline Grid, Predictive Analytics & Executive Advisory Agent"
+app.description = "API for interacting with the GAIL Sovereign Grid Advisor in Gemini Enterprise"
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+attach_reasoning_engine_routes(app)
 
 
-@app.get("/", response_class=HTMLResponse)
 @app.get("/demo", response_class=HTMLResponse)
 def get_demo_console():
     """Serves the interactive 5-Act Demonstration Console UI."""
@@ -122,38 +127,22 @@ def health_check():
     }
 
 
-@app.get("/a2a/gail_grid_advisor/.well-known/agent-card.json")
-def get_agent_card():
-    """Returns official A2A v0.3 / v1.0 Agent Card."""
-    from app.integration.agent_card import get_agent_card as build_card
-    return build_card()
-
-
 @app.post("/api/v1/prompt")
 def handle_prompt(payload: PromptPayload):
     """Handles natural language conversational prompts from the 5-Act demonstration."""
-    result = agent.execute_prompt(payload.prompt)
-    return result
+    return legacy_agent.execute_prompt(payload.prompt)
 
 
 @app.get("/api/v1/report/latest", response_class=HTMLResponse)
 def get_latest_executive_report():
-    """Serves the latest compiled sovereign executive briefing HTML."""
-    from app.integration.tools import compile_executive_briefing
-    report = compile_executive_briefing()
-    html_file = Path(report.compiled_html_path)
-    if not html_file.exists():
-        # Look in output_artifacts
-        candidates = list(OUTPUT_DIR.glob("*.html"))
-        if candidates:
-            html_file = candidates[-1]
-    if html_file.exists():
-        with open(html_file, "r", encoding="utf-8") as f:
-            return f.read()
-    return HTMLResponse("<h3>Report compilation in progress...</h3>", status_code=200)
+    """Returns the latest compiled sovereign HTML executive briefing."""
+    reports = sorted(OUTPUT_DIR.glob("GAIL_Executive_Briefing_*.html"), reverse=True)
+    if not reports:
+        res = legacy_agent.execute_prompt("compile executive briefing")
+        local_path = Path(res["data"]["local_file_path"])
+        return local_path.read_text(encoding="utf-8")
+    return reports[0].read_text(encoding="utf-8")
 
-
-attach_reasoning_engine_routes(app)
 
 if __name__ == "__main__":
     import uvicorn

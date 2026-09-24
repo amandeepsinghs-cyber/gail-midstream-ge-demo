@@ -1,6 +1,6 @@
 """Agent card capabilities declaration for Gemini Enterprise and Agent Registry.
 
-Declares ADK executor and A2UI v0.9 extension support.
+Declares ADK executor and A2UI v0.9 extension support for GAIL Pipeline Grid Advisor.
 """
 
 from typing import Dict, Any
@@ -44,16 +44,20 @@ def get_agent_card() -> Dict[str, Any]:
         "id": "GAIL-GRID-ADVISOR",
         "name": "GAIL Autonomous Pipeline Grid & Executive Advisory Agent",
         "version": "1.0.0",
-        "protocol": "a2a-jsonrpc-1.0",
-        "description": "Autonomous OT/IT agent for natural gas pipeline grid monitoring, SARIMAX forecasting, and SAP S/4HANA work order staging.",
-        "publisher": {
-            "organization": "GAIL (India) Limited",
-            "ministry": "Ministry of Petroleum & Natural Gas (MoPNG), Govt of India",
-        },
-        "endpoints": {
-            "jsonrpc": "/a2a/gail_grid_advisor",
-            "agent_card": "/a2a/gail_grid_advisor/.well-known/agent-card.json",
-        },
+        "protocol": "A2A JSON-RPC 0.3 / 1.0",
+        "ui_extension": A2UI_V09_EXTENSION_URI,
+        "governing_entity": "GAIL (India) Limited",
+        "runtime_target": "agent_runtime",
+        "description": "Autonomous OT/IT agent for natural gas pipeline grid monitoring, WeatherNext 3 ensemble forecasting, SARIMAX linepack forecasting, and SAP S/4HANA work order staging.",
+        "skills": [
+            "audit_grid_and_weather_risk",
+            "get_weathernext_forecast",
+            "query_scada_telemetry",
+            "run_sarimax_linepack_forecast",
+            "compile_executive_briefing",
+            "stage_sap_maintenance_order",
+            "query_enterprise_knowledge"
+        ],
         "capabilities": {
             "streaming": True,
             "extensions": [

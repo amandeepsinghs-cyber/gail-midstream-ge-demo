@@ -96,32 +96,70 @@ def try_activate_a2ui_extension(
     """Negotiate and activate the A2UI extension for the current request turn."""
     requested = extract_requested_a2ui_extensions(context)
     if not requested:
+        logger.debug("No A2UI extensions requested by client. Operating in text-only mode.")
         return None
 
     supported = extract_supported_a2ui_extensions(agent_card)
-    matched = [uri for uri in requested if uri in supported]
+    common_uris = [uri for uri in requested if uri in supported]
 
-    if not matched:
+    if not common_uris:
+        logger.warning(
+            "Client requested A2UI extensions %s, but agent supports %s.",
+            requested,
+            supported,
+        )
         return None
 
-    version = resolve_a2ui_version(matched)
-    return version
+    activated_version = resolve_a2ui_version(common_uris)
+    if not activated_version:
+        return None
+
+    try:
+        if hasattr(context, "call_context") and hasattr(context.call_context, "state"):
+            context.call_context.state[A2UI_STATE_KEY] = activated_version
+    except Exception as e:
+        logger.warning("Could not set A2UI_STATE_KEY in call_context.state: %s", e)
+
+    selected_uri = f"{A2UI_EXTENSION_PREFIX}{activated_version}"
+    if hasattr(context, "add_activated_extension") and callable(context.add_activated_extension):
+        try:
+            context.add_activated_extension(selected_uri)
+        except Exception as e:
+            logger.debug("context.add_activated_extension failed: %s", e)
+
+    logger.info("Successfully negotiated A2UI extension: version=%s", activated_version)
+    return activated_version
 
 
 class A2uiNegotiatingExecutor(A2aAgentExecutor):
-    """A2A Agent Executor that negotiates A2UI extension headers and saves state."""
+    """ADK A2aAgentExecutor with A2UI negotiation for Gemini Enterprise."""
 
-    def __init__(self, runner: Any, config: Optional[A2aAgentExecutorConfig] = None) -> None:
-        super().__init__(runner=runner, config=config)
+    def __init__(
+        self,
+        *,
+        runner: Any,
+        agent_card: AgentCard | None = None,
+        config: Optional[A2aAgentExecutorConfig] = None,
+        use_legacy: bool = False,
+        force_new_version: bool = False,
+    ):
+        super().__init__(
+            runner=runner,
+            config=config,
+            use_legacy=use_legacy,
+            force_new_version=force_new_version,
+        )
+        self._agent_card = agent_card
+
+    def set_agent_card(self, agent_card: AgentCard) -> None:
+        self._agent_card = agent_card
 
     async def execute(
         self,
         context: RequestContext,
         event_queue: EventQueue,
     ) -> None:
-        agent_card = getattr(self, "_agent_card", None)
-        active_version = try_activate_a2ui_extension(context, agent_card)
+        active_version = try_activate_a2ui_extension(context, self._agent_card)
         if active_version:
-            logger.info("A2UI Extension activated: %s", active_version)
-
+            logger.info("A2uiNegotiatingExecutor: Activated A2UI %s for task %s", active_version, context.task_id)
         await super().execute(context, event_queue)

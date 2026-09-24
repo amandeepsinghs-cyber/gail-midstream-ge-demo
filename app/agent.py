@@ -43,6 +43,7 @@ from app.integration.tools import (
     PENDING_SARIMAX_KEY,
     PENDING_REPORT_KEY,
     PENDING_SAP_KEY,
+    PENDING_ENTERPRISE_QA_KEY,
     audit_grid_and_weather_risk,
     get_weathernext_forecast,
     query_scada_telemetry,
@@ -62,6 +63,7 @@ from app.render.a2ui_emit import (
     build_sarimax_surface,
     build_report_surface,
     build_sap_surface,
+    build_enterprise_qa_surface,
 )
 
 logger = logging.getLogger(__name__)
@@ -101,6 +103,7 @@ def emit_a2ui_surface(
     pending_spatial = _take_pending(callback_context, PENDING_SPATIAL_KEY)
     pending_report = _take_pending(callback_context, PENDING_REPORT_KEY)
     pending_sap = _take_pending(callback_context, PENDING_SAP_KEY)
+    pending_qa = _take_pending(callback_context, PENDING_ENTERPRISE_QA_KEY)
 
     parts: list[Any] = []
 
@@ -116,6 +119,8 @@ def emit_a2ui_surface(
         parts = build_report_surface(pending_report, surface_id)
     elif pending_sap:
         parts = build_sap_surface(pending_sap, surface_id)
+    elif pending_qa:
+        parts = build_enterprise_qa_surface(pending_qa, surface_id)
     else:
         return None
 

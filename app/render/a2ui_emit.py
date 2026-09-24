@@ -158,11 +158,35 @@ def build_scada_surface(data: Any, surface_id: str) -> List[types.Part]:
     latest_p = dumped.get("latest_pressure_kg_cm2", 81.47)
     flow = dumped.get("average_flow_mmscmd", 48.05)
     exhaust = dumped.get("max_turbine_exhaust_temp_c", 549.4)
+    series = dumped.get("time_series", [])
+
+    vega_spec = {
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "title": f"Yokogawa FAST/TOOLS SCADA & Siemens RDS 72-Hour Historian ({station})",
+        "data": {"values": series[-36:] if series else []},
+        "width": "container",
+        "height": 240,
+        "encoding": {"x": {"field": "timestamp", "type": "nominal", "title": "Timestamp (Hourly)", "axis": {"labelAngle": -45}}},
+        "layer": [
+            {
+                "mark": {"type": "line", "color": "#1A73E8", "strokeWidth": 2.5},
+                "encoding": {
+                    "y": {"field": "linepack_pressure_kg_cm2", "type": "quantitative", "title": "Linepack Pressure (kg/cm²)", "scale": {"domain": [75, 86]}}
+                }
+            },
+            {
+                "mark": {"type": "line", "color": "#E65100", "strokeDash": [4, 4], "strokeWidth": 2},
+                "encoding": {
+                    "y": {"field": "flow_rate_mmscmd", "type": "quantitative", "title": "Flow Rate (MMSCMD)"}
+                }
+            }
+        ]
+    }
 
     root_comp = {
         "id": "root",
         "component": "Card",
-        "children": ["scada-title", "scada-sub", "scada-kpi", "scada-div", "scada-desc"],
+        "children": ["scada-title", "scada-sub", "scada-chart", "scada-div", "scada-kpi", "scada-desc"],
     }
     title_comp = {
         "id": "scada-title",
@@ -173,8 +197,14 @@ def build_scada_surface(data: Any, surface_id: str) -> List[types.Part]:
     sub_comp = {
         "id": "scada-sub",
         "component": "Text",
-        "text": f"72-Hour Operational Historian & Siemens RDS Gas Turbine Exhaust Telemetry (HVJ Trunkline)",
+        "text": "72-Hour Operational Historian & Siemens RDS Gas Turbine Exhaust Telemetry (HVJ Trunkline)",
         "variant": "caption",
+    }
+    chart_comp = {
+        "id": "scada-chart",
+        "component": "VegaChart",
+        "spec": vega_spec,
+        "height": 240,
     }
     kpi_comp = {
         "id": "scada-kpi",
@@ -195,7 +225,7 @@ def build_scada_surface(data: Any, surface_id: str) -> List[types.Part]:
         "variant": "caption",
     }
 
-    components = [root_comp, title_comp, sub_comp, kpi_comp, div_comp, desc_comp]
+    components = [root_comp, title_comp, sub_comp, chart_comp, div_comp, kpi_comp, desc_comp]
 
     return [
         wrap_a2ui_part(build_create_surface(surface_id=surface_id)),
@@ -347,6 +377,51 @@ def build_sap_surface(data: Any, surface_id: str) -> List[types.Part]:
     }
 
     components = [root_comp, title_comp, sub_comp, kpi_comp, div_comp, audit_comp]
+
+    return [
+        wrap_a2ui_part(build_create_surface(surface_id=surface_id)),
+        wrap_a2ui_part(build_update_components(surface_id=surface_id, components=components)),
+    ]
+
+
+def build_enterprise_qa_surface(data: Any, surface_id: str) -> List[types.Part]:
+    """Emit createSurface + updateComponents for GAIL AI Tarang Enterprise Knowledge Q&A."""
+    dumped = data.model_dump() if hasattr(data, "model_dump") else data
+    sources = dumped.get("source_attribution", [])
+    sources_txt = "\n".join([f"• {s}" for s in sources]) if sources else "• GAIL Corporate Operational Guidelines"
+
+    root_comp = {
+        "id": "root",
+        "component": "Card",
+        "children": ["qa-title", "qa-sub", "qa-ans", "qa-div", "qa-src"],
+    }
+    title_comp = {
+        "id": "qa-title",
+        "component": "Text",
+        "text": "🏛️ GAIL AI Tarang · Sovereign Enterprise Intelligence",
+        "variant": "h3",
+    }
+    sub_comp = {
+        "id": "qa-sub",
+        "component": "Text",
+        "text": f"Query: {dumped.get('query', 'Enterprise Inquiry')} · Confidence: {int(dumped.get('confidence_score', 0.99)*100)}%",
+        "variant": "caption",
+    }
+    ans_comp = {
+        "id": "qa-ans",
+        "component": "Text",
+        "text": dumped.get("answer", ""),
+        "variant": "body",
+    }
+    div_comp = {"id": "qa-div", "component": "Divider"}
+    src_comp = {
+        "id": "qa-src",
+        "component": "Text",
+        "text": f"Authoritative Citations:\n{sources_txt}",
+        "variant": "caption",
+    }
+
+    components = [root_comp, title_comp, sub_comp, ans_comp, div_comp, src_comp]
 
     return [
         wrap_a2ui_part(build_create_surface(surface_id=surface_id)),

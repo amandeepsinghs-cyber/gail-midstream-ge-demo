@@ -1,10 +1,107 @@
-"""Reasoning engine adapter for Vertex AI Agent Engine."""
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-from typing import Any
-from fastapi import FastAPI
+"""Serve the reasoning_engine contract over HTTP for Vertex AI Agent Runtime and Gemini Enterprise."""
+
+import inspect
+import json
+
+from agentplatform.agent_engines.templates.adk import AdkApp
+from fastapi import FastAPI, HTTPException, Request, encoders, responses
+
+from app.app_utils import services
+
+
+def _no_op_instrumentor_builder(project_id: str) -> None:
+    return None
 
 
 def attach_reasoning_engine_routes(app: FastAPI) -> None:
-    @app.get("/reasoningEngine/health")
-    def re_health():
-        return {"status": "HEALTHY", "engine": "gail_grid_advisor"}
+    """Register reasoning_engine routes that dispatch to an AdkApp."""
+    runtime: AdkApp | None = None
+    streaming_methods: set[str] = set()
+    sync_methods: set[str] = set()
+
+    def get_runtime() -> AdkApp:
+        nonlocal runtime, streaming_methods, sync_methods
+        if runtime is None:
+            from app.agent import app as adk_app
+
+            runtime = AdkApp(
+                app=adk_app,
+                session_service_builder=services.get_session_service,
+                artifact_service_builder=services.get_artifact_service,
+                instrumentor_builder=_no_op_instrumentor_builder,
+            )
+            runtime.set_up()
+            operations = runtime.register_operations()
+            streaming_methods = set(operations.get("stream", [])) | set(
+                operations.get("async_stream", [])
+            )
+            sync_methods = set(operations.get("", [])) | set(
+                operations.get("async", [])
+            )
+        return runtime
+
+    def resolve_method(class_method: str, *, streaming: bool):
+        rt = get_runtime()
+        allowed = streaming_methods if streaming else sync_methods
+        if class_method not in allowed:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Unsupported reasoning_engine method: {class_method!r}",
+            )
+        return getattr(rt, class_method)
+
+    @app.post("/api/stream_reasoning_engine")
+    async def stream_query(request: Request) -> responses.StreamingResponse:
+        body = await request.json()
+        class_method = body.get("class_method") or "async_stream_query"
+        if class_method == "stream_query":
+            try:
+                method = resolve_method("async_stream_query", streaming=True)
+            except Exception:
+                method = resolve_method("stream_query", streaming=True)
+        else:
+            method = resolve_method(class_method, streaming=True)
+
+        kwargs = body.get("input") or {}
+
+        async def generator():
+            res = method(**kwargs)
+            if hasattr(res, "__aiter__"):
+                async for event in res:
+                    yield json.dumps(encoders.jsonable_encoder(event)) + "\n"
+            else:
+                for event in res:
+                    yield json.dumps(encoders.jsonable_encoder(event)) + "\n"
+
+        return responses.StreamingResponse(
+            content=generator(), media_type="application/json"
+        )
+
+    @app.post("/api/reasoning_engine")
+    async def query(request: Request) -> responses.JSONResponse:
+        body = await request.json()
+        class_method = body.get("class_method") or "query"
+        method = resolve_method(class_method, streaming=False)
+        kwargs = body.get("input") or {}
+        output = (
+            await method(**kwargs)
+            if inspect.iscoroutinefunction(method)
+            else method(**kwargs)
+        )
+        return responses.JSONResponse(
+            content=encoders.jsonable_encoder({"output": output})
+        )

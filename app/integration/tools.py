@@ -54,6 +54,7 @@ PENDING_SCADA_KEY: str = "pending_scada_summary"
 PENDING_SARIMAX_KEY: str = "pending_sarimax_summary"
 PENDING_REPORT_KEY: str = "pending_report_summary"
 PENDING_SAP_KEY: str = "pending_sap_summary"
+PENDING_ENTERPRISE_QA_KEY: str = "pending_enterprise_qa_summary"
 
 
 # =============================================================================
@@ -341,7 +342,7 @@ def query_enterprise_knowledge(query: str, tool_context: Optional[ToolContext] =
     q_lower = query.lower()
     
     if "sanchay" in q_lower or "fuel" in q_lower or "savings" in q_lower:
-        return EnterpriseQueryResponse(
+        res = EnterpriseQueryResponse(
             query=query,
             answer=(
                 "Project Sanchay is GAIL's flagship operational efficiency initiative launched across all major compressor stations. "
@@ -357,7 +358,7 @@ def query_enterprise_knowledge(query: str, tool_context: Optional[ToolContext] =
             confidence_score=0.99
         )
     elif "net zero" in q_lower or "esg" in q_lower or "scope" in q_lower or "emission" in q_lower:
-        return EnterpriseQueryResponse(
+        res = EnterpriseQueryResponse(
             query=query,
             answer=(
                 "GAIL (India) Limited has committed to achieving Net Zero Scope-1 and Scope-2 emissions by the year 2035—five years "
@@ -372,7 +373,7 @@ def query_enterprise_knowledge(query: str, tool_context: Optional[ToolContext] =
             confidence_score=0.98
         )
     elif "transmission" in q_lower or "volume" in q_lower or "grid" in q_lower or "network" in q_lower or "share" in q_lower:
-        return EnterpriseQueryResponse(
+        res = EnterpriseQueryResponse(
             query=query,
             answer=(
                 "GAIL owns and operates an extensive cross-country natural gas pipeline network spanning over 18,700 km "
@@ -387,7 +388,7 @@ def query_enterprise_knowledge(query: str, tool_context: Optional[ToolContext] =
             confidence_score=0.99
         )
     else:
-        return EnterpriseQueryResponse(
+        res = EnterpriseQueryResponse(
             query=query,
             answer=(
                 f"According to GAIL NGMC operational documentation, natural gas operations across the 18,700 km network "
@@ -400,3 +401,11 @@ def query_enterprise_knowledge(query: str, tool_context: Optional[ToolContext] =
             ],
             confidence_score=0.95
         )
+
+    if tool_context and hasattr(tool_context, "state") and tool_context.state is not None:
+        try:
+            tool_context.state[PENDING_ENTERPRISE_QA_KEY] = res.model_dump()
+        except Exception:
+            pass
+
+    return res
