@@ -66,8 +66,10 @@ def audit_grid_and_weather_risk(
     tool_context: Optional[ToolContext] = None
 ) -> GridHealthAuditResponse:
     """
-    Initializes a spatial grid integrity audit across GAIL's 18,700 km cross-country pipeline corridors
-    and overlays Google DeepMind WeatherNext 3 probabilistic river swell warnings.
+    STEP 1 Tool: Accesses the GAIL Enterprise Data Lake (gs://gail-midstream-ge-demo-datalake),
+    Gas Management System (GMS), regional transmission corridor volumes across GAIL's 18,700 km network
+    (122.18 MMSCMD across HVJ, Urja Ganga / JHBDPL, DBNPL, MNJPL), and sectoral customer off-take nominations
+    (Fertilizer HURL/NFL/IFFCO, CGD, Power, and Pata Petrochemicals).
     """
     gis_data = load_geojson("river_crossings_gis.geojson")
     weathernext = WeatherNextEngine().get_forecast(location="Gauna_Bawana")
@@ -76,12 +78,22 @@ def audit_grid_and_weather_risk(
         {
             "location_name": "Gauna-Bawana Yamuna River Crossing",
             "asset_class": "SUBMERGED_PIPELINE_CROSSING",
-            "risk_level": "CRITICAL",
-            "river_gauge_m": 206.4,
+            "risk_level": "WATCH",
+            "river_gauge_m": 204.8,
             "danger_mark_m": 205.33,
-            "imd_rainfall_alert": "HEAVY_TO_VERY_HEAVY (115.6mm rainfall in catchment)",
-            "hydraulic_stress_indicator": "ELEVATED_VIBRATION_ALERT (Scour risk)",
-            "action_advisory": "Dispatch regional pipeline patrol; activate upstream sectionalizing valve isolation protocol."
+            "imd_rainfall_alert": "Normal Seasonal Waterway Flow",
+            "hydraulic_stress_indicator": "NORMAL_STABILITY",
+            "action_advisory": "Routine aerial and pressure log monitoring active."
+        },
+        {
+            "location_name": "HVJ & Urja Ganga Fertilizer Anchor Nominations (Exogenous X₁)",
+            "asset_class": "COMMERCIAL_GMS_NOMINATION_SCHEDULE",
+            "risk_level": "HIGH_DEMAND_RAMP",
+            "river_gauge_m": 122.18,
+            "danger_mark_m": 134.70,
+            "imd_rainfall_alert": "Fertilizer (HURL/NFL) +20.0% & CGD +12.0% Scheduled Morning Off-Take Ramp",
+            "hydraulic_stress_indicator": "PRE-SURGE_LINEPACK_WATCH",
+            "action_advisory": "Execute 72h Cloud Historian time-series inspection and run 24h Box-Jenkins SARIMAX forecast."
         }
     ]
     
@@ -90,18 +102,19 @@ def audit_grid_and_weather_risk(
     res = GridHealthAuditResponse(
         audit_timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         network_summary={
-            "corridor_name": "Hazira-Vijaipur-Jagdishpur (HVJ) Trunkline & MNJPL",
+            "corridor_name": "GAIL 18,700 km Integrated National Gas Grid (HVJ · Urja Ganga · DBNPL · MNJPL)",
             "total_network_km": 18700.0,
-            "status": "OPERATIONAL_WITH_ENVIRONMENTAL_WATCH",
-            "key_stations": ["Hazira Terminal", "Vijaipur Compressor Hub", "Chhainsa Station", "Dadri Terminal"]
+            "total_transmission_mmscmd": 122.18,
+            "status": "100%_SCHEMA_VALIDATED_GMS_AND_DATA_LAKE_ONLINE",
+            "key_stations": ["Hazira Terminal", "Vijaipur Compressor Hub", "Chhainsa Station", "Pata Petrochem Complex", "Dadri Terminal"]
         },
         environmental_alerts=alerts,
-        monitored_corridors=["HVJ Trunkline", "MNJPL (Samruddhi Expressway)", "JHBDPL Urja Ganga"],
+        monitored_corridors=["HVJ Trunkline (81.4 MMSCMD)", "JHBDPL Urja Ganga (12.0 MMSCMD)", "DBNPL (10.7 MMSCMD)", "MNJPL Samruddhi (9.9 MMSCMD)"],
         weathernext_summary={
-            "model": weathernext["model"],
-            "risk_category": weathernext["risk_category"],
-            "cumulative_precipitation_p90_mm": weathernext["summary_metrics"]["cumulative_precipitation_p90_mm"],
-            "alert": weathernext["alert_description"]
+            "model": "GAIL GMS & Enterprise Data Lake Inventory",
+            "risk_category": "EXOGENOUS_NOMINATION_SURGE_X1",
+            "cumulative_precipitation_p90_mm": 122.18,
+            "alert": "122.18 MMSCMD verified across 5 regional corridors; +20% Fertilizer off-take ramp scheduled at T+8h."
         },
         a2ui_map_payload=a2ui_map
     )
@@ -116,7 +129,7 @@ def audit_grid_and_weather_risk(
 
 
 # =============================================================================
-# TOOL 2: GOOGLE DEEPMIND WEATHERNEXT 3 AI FORECAST
+# TOOL 2: OPTIONAL ENVIRONMENTAL WEATHER OVERLAY
 # =============================================================================
 
 def get_weathernext_forecast(
@@ -125,8 +138,8 @@ def get_weathernext_forecast(
     tool_context: Optional[ToolContext] = None
 ) -> WeatherNextForecastResponse:
     """
-    Queries Google DeepMind WeatherNext 3 high-resolution (0.05° station ensemble) AI model
-    for real coordinates across GAIL pipeline hubs or river crossings.
+    Optional Add-On Tool: Queries environmental weather forecast ensemble for specific pipeline coordinates
+    only when the user explicitly requests weather conditions.
     """
     engine = WeatherNextEngine()
     data = engine.get_forecast(location=location, horizon_hours=horizon_hours)
@@ -144,7 +157,7 @@ def get_weathernext_forecast(
 
 
 # =============================================================================
-# TOOL 3 (ACT 2): SCADA & SIEMENS RDS TELEMETRY
+# TOOL 3 (STEP 2): ENTERPRISE CLOUD HISTORIAN & GMS 72-HOUR TIME SERIES
 # =============================================================================
 
 def query_scada_telemetry(
@@ -153,8 +166,9 @@ def query_scada_telemetry(
     tool_context: Optional[ToolContext] = None
 ) -> ScadaHistoryResponse:
     """
-    Ingests live 72-hour operational historian telemetry from Yokogawa FAST/TOOLS SCADA
-    and Siemens Remote Diagnostic Services (RDS) gas turbine exhaust logs.
+    STEP 2 Tool: Queries and plots the 72-hour operational time-series dataset (Line-Pack Pressure in kg/cm²,
+    Gas Transmission Flow in MMSCMD, and Compressor Station Thermal Efficiency Index in °C) from the
+    GAIL Enterprise Cloud Historian & Gas Management System (GMS) Data Lake.
     """
     engine = SarimaxLinepackEngine()
     df = engine.load_historical_data()
@@ -187,7 +201,7 @@ def query_scada_telemetry(
 
 
 # =============================================================================
-# TOOL 4 (ACT 3): DETERMINISTIC ECONOMETRIC SARIMAX FORECAST
+# TOOL 4 (STEP 3): DETERMINISTIC MULTIVARIATE SARIMAX FORECAST
 # =============================================================================
 
 def run_sarimax_linepack_forecast(
@@ -196,8 +210,9 @@ def run_sarimax_linepack_forecast(
     tool_context: Optional[ToolContext] = None
 ) -> SarimaxForecastResponse:
     """
-    Executes PPAC-grade multivariate econometric SARIMAX demand forecast incorporating
-    scheduled customer nominations and WeatherNext ambient temperatures with 95% confidence intervals.
+    STEP 3 Tool: Executes GAIL's deterministic multivariate Box-Jenkins SARIMAX (1,1,1)x(1,1,1)_24 model
+    combining 24-hour Diurnal Seasonality (S=24) and Exogenous Customer Off-Take Nominations (X₁: Fertilizer & CGD schedules)
+    with 95% confidence intervals and Project Sanchay compressor setpoint optimization.
     """
     engine = SarimaxLinepackEngine()
     forecast_results = engine.run_forecast(horizon_hours=horizon_hours)
@@ -216,13 +231,14 @@ def run_sarimax_linepack_forecast(
 
 
 # =============================================================================
-# TOOL 5 (ACT 4): SOVEREIGN MULTI-SOURCE EXECUTIVE BRIEFING COMPILER
+# TOOL 5 (STEP 4): EXHAUSTIVE GAIL EXECUTIVE READY RECKONER REPORT COMPILER
 # =============================================================================
 
 def compile_executive_briefing(tool_context: Optional[ToolContext] = None) -> ExecutiveBriefingReport:
     """
-    Synthesizes Yokogawa SCADA telemetry, Siemens RDS turbine logs, WeatherNext 3 models,
-    and SARIMAX fuel savings into an authoritative sovereign executive HTML briefing report.
+    STEP 4 Tool: Compiles the exhaustive 6-Part GAIL (India) Limited Daily Gas Transmission,
+    SARIMAX Demand & Project Sanchay Executive Report (Ready Reckoner HTML edition) from GMS,
+    Enterprise Cloud Historian, and SAP S/4HANA (Project Navodaya) datasets.
     """
     grid_audit = audit_grid_and_weather_risk().model_dump()
     scada_summary = query_scada_telemetry().model_dump()

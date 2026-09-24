@@ -80,17 +80,18 @@ def load_nominations(filename: str = "customer_nominations_24h.json") -> Dict[st
 def publish_executive_report_to_gcs(html_content: str, filename: str) -> Optional[str]:
     """
     Publishes compiled executive report to gs://<BUCKET_NAME>/curated/executive_reports/<filename>
-    Returns GCS URI if successful, or None if offline.
+    Returns browser-accessible Cloud Storage web URL if successful, or None if offline.
     """
     gcs_uri = f"gs://{BUCKET_NAME}/curated/executive_reports/{filename}"
+    web_url = f"https://storage.cloud.google.com/{BUCKET_NAME}/curated/executive_reports/{filename}"
     try:
         from google.cloud import storage
         client = storage.Client()
         bucket = client.bucket(BUCKET_NAME)
         blob = bucket.blob(f"curated/executive_reports/{filename}")
         blob.upload_from_string(html_content, content_type="text/html")
-        logger.info("Published executive report to GCS: %s", gcs_uri)
-        return gcs_uri
+        logger.info("Published executive report to GCS: %s (%s)", gcs_uri, web_url)
+        return web_url
     except Exception as e:
         logger.warning("Could not publish report to GCS (%s): %s", gcs_uri, e)
         return None

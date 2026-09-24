@@ -607,118 +607,127 @@ class ExecutiveReportCompiler:
             </tbody>
         </table>
 
-        <!-- PART B: SCADA TELEMETRY & SIEMENS RDS LOGS -->
+        <!-- PART B: SECTORAL DEMAND & CUSTOMER NOMINATION SCHEDULES -->
         <div class="section-title">
-            <span>Part B: SCADA Telemetry Historian & Siemens RDS Gas Turbine Logs</span>
-            <span style="font-size: 13px; font-weight: 700; color: var(--gail-navy);">YOKOGAWA FAST/TOOLS • 72-HOUR SERIE</span>
+            <span>Part B: Sectoral Gas Demand & Customer Off-Take Nominations (Exogenous X₁ Schedule)</span>
+            <span style="font-size: 13px; font-weight: 700; color: var(--gail-navy);">GAS MANAGEMENT SYSTEM (GMS) • COMMERCIAL OFF-TAKE LEDGER</span>
         </div>
 
-        <div class="table-title">Table B.1: Hourly Telemetry Record for Chhainsa Compressor Station (Last 24h Sample)</div>
+        <div class="table-title">Table B.1: Sectoral Customer Nomination & Off-Take Schedule Across GAIL 18,700 km Network (122.18 MMSCMD)</div>
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Timestamp (IST)</th>
-                    <th>Linepack Pressure</th>
-                    <th>Transmission Flow</th>
-                    <th>Siemens GT-01 Exhaust</th>
-                    <th>Compressor RPM</th>
-                    <th>Suction Temp</th>
-                    <th>Hydraulic Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr><td>06:00 IST</td><td>82.40 kg/cm²</td><td>46.80 MMSCMD</td><td>542.1°C</td><td>4,980 RPM</td><td>28.4°C</td><td><span style="color: #059669; font-weight: 800;">NORMAL</span></td></tr>
-                <tr><td>08:00 IST</td><td>82.10 kg/cm²</td><td>47.40 MMSCMD</td><td>545.6°C</td><td>5,020 RPM</td><td>30.1°C</td><td><span style="color: #059669; font-weight: 800;">NORMAL</span></td></tr>
-                <tr><td>10:00 IST</td><td>81.80 kg/cm²</td><td>48.10 MMSCMD</td><td>547.8°C</td><td>5,080 RPM</td><td>33.5°C</td><td><span style="color: #059669; font-weight: 800;">NORMAL</span></td></tr>
-                <tr><td>12:00 IST</td><td>81.65 kg/cm²</td><td>48.50 MMSCMD</td><td>548.9°C</td><td>5,110 RPM</td><td>38.2°C</td><td><span style="color: #059669; font-weight: 800;">NORMAL</span></td></tr>
-                <tr class="highlight-row"><td><strong>14:00 IST (Current)</strong></td><td><strong>81.47 kg/cm²</strong></td><td><strong>48.05 MMSCMD</strong></td><td><strong>549.4°C</strong></td><td><strong>5,140 RPM</strong></td><td><strong>41.9°C</strong></td><td><span style="color: #D97706; font-weight: 800;">DEPRECIATING</span></td></tr>
-                <tr><td>Minimum (72h)</td><td>79.80 kg/cm²</td><td>44.20 MMSCMD</td><td>528.0°C</td><td>4,800 RPM</td><td>24.0°C</td><td>BUFFER LOW</td></tr>
-                <tr><td>Maximum (72h)</td><td>84.10 kg/cm²</td><td>51.30 MMSCMD</td><td>551.2°C</td><td>5,220 RPM</td><td>43.1°C</td><td>OEM BOUND</td></tr>
-                <tr class="total-row"><td>72h Average / Limit</td><td>81.62 kg/cm²</td><td>48.05 MMSCMD</td><td>549.4°C (&lt;555°C)</td><td>5,050 RPM</td><td>33.8°C</td><td>AUDIT COMPLIANT</td></tr>
-            </tbody>
-        </table>
-
-        <!-- PART C: GOOGLE DEEPMIND WEATHERNEXT 3 AI MODEL -->
-        <div class="section-title">
-            <span>Part C: Google DeepMind WeatherNext 3 AI Probabilistic Catchment Layer</span>
-            <span style="font-size: 13px; font-weight: 700; color: var(--gail-navy);">0.05° HIGH-RESOLUTION ENSEMBLE</span>
-        </div>
-
-        <div class="alert-box">
-            <div class="alert-title">CRITICAL ENVIRONMENTAL RISK ENVELOPE: YAMUNA CATCHMENT DELUGE</div>
-            <div class="alert-desc">
-                Google DeepMind WeatherNext 3 predicts extreme monsoon surge along the Gauna-Bawana river corridor (28.7912°N, 77.0315°E). 
-                River gauge stands at 206.40 m, exceeding the statutory danger mark of 205.33 m with 115.6 mm p90 cumulative precipitation. 
-                Submerged pipeline crossing is under severe hydraulic scour risk. Sectionalizing valve isolation on armed standby.
-            </div>
-        </div>
-
-        <div class="table-title">Table C.1: WeatherNext 3 Station-Level Ensemble Forecast Across Strategic Pipeline Nodes</div>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Grid Station / Crossing</th>
-                    <th>Latitude / Longitude</th>
-                    <th>Peak Temp (p50)</th>
-                    <th>Precipitation (p90)</th>
-                    <th>Wind Gust (p90)</th>
-                    <th>Soil Saturation</th>
-                    <th>Hazard Category</th>
+                    <th>Demand Sector & Anchor Customers</th>
+                    <th>Primary Pipeline Corridor</th>
+                    <th>Baseline Allocation</th>
+                    <th>T+8h Scheduled Nomination (X₁)</th>
+                    <th>Scheduled Ramp %</th>
+                    <th>Contract Minimum Pressure</th>
+                    <th>Dispatch Priority</th>
                 </tr>
             </thead>
             <tbody>
                 <tr class="highlight-row">
-                    <td><strong>Gauna-Bawana River Crossing</strong></td>
-                    <td>28.7912°N, 77.0315°E</td>
-                    <td>38.2°C</td>
-                    <td><strong>115.6 mm (Deluge)</strong></td>
-                    <td>68 km/h</td>
-                    <td>94% (Saturated)</td>
-                    <td><span style="color: #DC2626; font-weight: 800;">CRITICAL_HYDRAULIC_SURGE</span></td>
+                    <td><strong>Fertilizer Units (HURL, NFL Vijaipur/Panipat, IFFCO, KRIBHCO)</strong></td>
+                    <td>HVJ & Urja Ganga (JHBDPL)</td>
+                    <td>38.40 MMSCMD</td>
+                    <td><strong>46.08 MMSCMD</strong></td>
+                    <td><strong>+20.0% (Morning Surge)</strong></td>
+                    <td>76.00 kg/cm²</td>
+                    <td><span style="color: #DC2626; font-weight: 800;">TIER-1 STATUTORY</span></td>
                 </tr>
                 <tr>
-                    <td>Chhainsa Compressor Station</td>
-                    <td>28.2711°N, 77.3412°E</td>
-                    <td>41.9°C (Heatwave)</td>
-                    <td>14.2 mm</td>
-                    <td>42 km/h</td>
-                    <td>58%</td>
-                    <td><span style="color: #D97706; font-weight: 800;">THERMAL_DERATING_WATCH</span></td>
+                    <td><strong>City Gas Distribution (IGL Delhi-NCR, MGL, GAIL Gas)</strong></td>
+                    <td>HVJ, DBNPL & Regional</td>
+                    <td>28.20 MMSCMD</td>
+                    <td>31.58 MMSCMD</td>
+                    <td>+12.0% (Diurnal Peak)</td>
+                    <td>75.00 kg/cm²</td>
+                    <td><span style="color: #DC2626; font-weight: 800;">TIER-1 DOMESTIC</span></td>
                 </tr>
                 <tr>
-                    <td>Vijaipur Compressor Hub</td>
-                    <td>24.1627°N, 77.2941°E</td>
-                    <td>39.5°C</td>
-                    <td>8.4 mm</td>
-                    <td>34 km/h</td>
-                    <td>45%</td>
-                    <td><span style="color: #059669; font-weight: 800;">NORMAL_OPERATION</span></td>
+                    <td><strong>Power Generation (NTPC Dadri, Auraiya, Bawana, Pragati)</strong></td>
+                    <td>HVJ Northern & DBNPL</td>
+                    <td>24.80 MMSCMD</td>
+                    <td>26.04 MMSCMD</td>
+                    <td>+5.0% (Peaking Load)</td>
+                    <td>74.00 kg/cm²</td>
+                    <td><span style="color: #D97706; font-weight: 800;">TIER-2 GRID BALANCING</span></td>
                 </tr>
                 <tr>
-                    <td>Dadri Delivery Terminal</td>
-                    <td>28.5510°N, 77.5540°E</td>
-                    <td>40.1°C</td>
-                    <td>22.5 mm</td>
-                    <td>48 km/h</td>
-                    <td>62%</td>
-                    <td><span style="color: #059669; font-weight: 800;">NORMAL_OPERATION</span></td>
+                    <td><strong>Petrochemicals & Internal LPG (GAIL Pata, Vijaipur, Usar)</strong></td>
+                    <td>HVJ Central Trunkline</td>
+                    <td>18.50 MMSCMD</td>
+                    <td>18.50 MMSCMD</td>
+                    <td>0.0% (Base Load)</td>
+                    <td>76.00 kg/cm²</td>
+                    <td><span style="color: #059669; font-weight: 800;">CONTINUOUS CRACKER</span></td>
                 </tr>
                 <tr>
-                    <td>Hazira Gas Terminal (Inlet)</td>
-                    <td>21.1120°N, 72.6410°E</td>
-                    <td>34.0°C</td>
-                    <td>45.0 mm</td>
-                    <td>55 km/h</td>
-                    <td>72%</td>
-                    <td><span style="color: #D97706; font-weight: 800;">MONSOON_COASTAL_ALERT</span></td>
+                    <td><strong>Industrial, Refineries & Steel (MNJPL / Southern / Others)</strong></td>
+                    <td>MNJPL & Regional Grids</td>
+                    <td>12.28 MMSCMD</td>
+                    <td>12.50 MMSCMD</td>
+                    <td>+1.8%</td>
+                    <td>72.00 kg/cm²</td>
+                    <td><span style="color: #059669; font-weight: 800;">COMMERCIAL FIRM</span></td>
                 </tr>
+                <tr class="total-row">
+                    <td>Total GAIL National Transmission Portfolio</td>
+                    <td>18,700 km Integrated Grid</td>
+                    <td>122.18 MMSCMD</td>
+                    <td>134.70 MMSCMD (Peak Window)</td>
+                    <td>+10.2% Aggregate Surge</td>
+                    <td>76.00 kg/cm² Floor</td>
+                    <td>EXOGENOUS (X₁) LOCKED</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- PART C: ENTERPRISE OPERATIONAL HISTORIAN 72-HOUR TIME SERIES -->
+        <div class="section-title">
+            <span>Part C: Enterprise Cloud Historian & GMS 72-Hour Operational Time-Series Analysis</span>
+            <span style="font-size: 13px; font-weight: 700; color: var(--gail-navy);">GAIL ENTERPRISE DATA LAKE • 72-HOUR HISTORICAL SERIES</span>
+        </div>
+
+        <div class="table-title">Table C.1: 72-Hour Historical Time-Series Record for Chhainsa–Vijaipur HVJ Corridor (GMS & Cloud Historian)</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Timestamp Window (IST)</th>
+                    <th>Line-Pack Pressure (Yₜ)</th>
+                    <th>Corridor Flow Rate</th>
+                    <th>Compressor Thermal Index</th>
+                    <th>Station Speed</th>
+                    <th>Fuel Gas Burn Rate</th>
+                    <th>Time-Series State</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>T-48h Baseline Mean</td><td>82.40 kg/cm²</td><td>46.80 MMSCMD</td><td>542.1°C</td><td>4,980 RPM</td><td>1.44% of Throughput</td><td><span style="color: #059669; font-weight: 800;">EQUILIBRIUM</span></td></tr>
+                <tr><td>T-24h Diurnal Morning Window</td><td>82.10 kg/cm²</td><td>47.40 MMSCMD</td><td>545.6°C</td><td>5,020 RPM</td><td>1.43% of Throughput</td><td><span style="color: #059669; font-weight: 800;">EQUILIBRIUM</span></td></tr>
+                <tr><td>T-12h Evening Peak Window</td><td>81.80 kg/cm²</td><td>48.10 MMSCMD</td><td>547.8°C</td><td>5,080 RPM</td><td>1.42% of Throughput</td><td><span style="color: #059669; font-weight: 800;">EQUILIBRIUM</span></td></tr>
+                <tr><td>T-6h Pre-Dispatch Window</td><td>81.65 kg/cm²</td><td>48.50 MMSCMD</td><td>548.9°C</td><td>5,110 RPM</td><td>1.42% of Throughput</td><td><span style="color: #059669; font-weight: 800;">EQUILIBRIUM</span></td></tr>
+                <tr class="highlight-row"><td><strong>T=0h (Current Historian Snapshot)</strong></td><td><strong>81.47 kg/cm²</strong></td><td><strong>48.05 MMSCMD</strong></td><td><strong>549.4°C</strong></td><td><strong>5,140 RPM</strong></td><td><strong>1.41% of Throughput</strong></td><td><span style="color: #D97706; font-weight: 800;">PRE-SURGE PLATEAU</span></td></tr>
+                <tr><td>72h Historical Minimum</td><td>79.80 kg/cm²</td><td>44.20 MMSCMD</td><td>528.0°C</td><td>4,800 RPM</td><td>1.38% of Throughput</td><td>BUFFER FLOOR</td></tr>
+                <tr><td>72h Historical Maximum</td><td>84.10 kg/cm²</td><td>51.30 MMSCMD</td><td>551.2°C</td><td>5,220 RPM</td><td>1.48% of Throughput</td><td>DESIGN CEILING</td></tr>
+                <tr class="total-row"><td>72h Time-Series Summary / Threshold</td><td>81.62 kg/cm² Mean</td><td>48.05 MMSCMD</td><td>549.4°C (&lt;555°C Limit)</td><td>5,050 RPM</td><td>Project Sanchay Baseline</td><td>VALIDATED SERIES</td></tr>
             </tbody>
         </table>
 
         <!-- PART D: ECONOMETRIC SARIMAX LINEPACK FORECAST -->
         <div class="section-title">
-            <span>Part D: Econometric SARIMAX Line-Pack Forecasting & Deficit Simulation</span>
-            <span style="font-size: 13px; font-weight: 700; color: var(--gail-navy);">PPAC-GRADE BOX-JENKINS TSA (s=24)</span>
+            <span>Part D: Deterministic Multivariate SARIMAX (1,1,1)×(1,1,1)₂₄ Time-Series Forecast</span>
+            <span style="font-size: 13px; font-weight: 700; color: var(--gail-navy);">SEASONAL DIURNAL (S=24) + EXOGENOUS NOMINATIONS (X₁)</span>
+        </div>
+
+        <div class="alert-box">
+            <div class="alert-title">MATHEMATICAL EARLY WARNING: WHY SARIMAX PREDICTS A T+14h DIP ON A FLAT PRESSURE TREND</div>
+            <div class="alert-desc">
+                Univariate time-series models (basic ARIMA/Holt-Winters) only extrapolate past pressure (Yₜ) and miss upcoming inflection points. 
+                GAIL's Multivariate Box-Jenkins SARIMAX model combines <strong>24-Hour Diurnal Seasonality (S=24: Yₜ₋₂₄, Yₜ₋₄₈)</strong> with <strong>Exogenous Leading Regressors (βXₜ₊ₖ)</strong>—specifically the scheduled +20% Fertilizer (HURL/NFL) and +12% CGD customer off-take nominations (X₁) from Table B.1. 
+                Because hydraulic propagation across the 18,700 km grid introduces a multi-hour wave delay, the equation <strong>Ŷₜ₊ₖ = μ + ϕYₜ + θS₂₄ + βXₜ₊ₖ</strong> deterministically identifies the <strong>73.80 kg/cm² line-pack deficit at T+14h</strong> (2.20 kg/cm² below the 76.00 kg/cm² contract floor) hours before physical pressure drops at Chhainsa.
+            </div>
         </div>
 
         <div class="table-title">Table D.1: 24-Hour Horizon Linepack Depletion Forecast & Confidence Intervals (Chhainsa CS)</div>

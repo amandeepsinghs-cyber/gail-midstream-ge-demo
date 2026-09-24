@@ -79,15 +79,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     from app.integration.agent_card import build_agent_capabilities
     from app.integration.executor import A2uiNegotiatingExecutor
 
-    await attach_a2a_routes(
-        app,
-        agent=root_agent,
-        runner=runner,
-        task_store=InMemoryTaskStore(),
-        rpc_path=f"/a2a/{adk_app.name}",
-        capabilities=build_agent_capabilities(),
-        executor=A2uiNegotiatingExecutor(runner=runner),
-    )
+    for rpc_path in (f"/a2a/{adk_app.name}", "/a2a/gail_grid_advisor"):
+        await attach_a2a_routes(
+            app,
+            agent=root_agent,
+            runner=runner,
+            task_store=InMemoryTaskStore(),
+            rpc_path=rpc_path,
+            capabilities=build_agent_capabilities(),
+            executor=A2uiNegotiatingExecutor(runner=runner),
+        )
     yield
 
 

@@ -33,18 +33,18 @@ def build_sarimax_vega_spec(
     plot_data: List[Dict[str, Any]] = []
     
     if points:
-        for pt in points:
-            h = pt.get("forecast_hour", 0)
+        for idx, pt in enumerate(points):
+            h = pt.get("hour_ahead") or pt.get("forecast_hour") or (idx + 1)
             p = pt.get("predicted_linepack_kg_cm2", 80.0)
-            low = pt.get("confidence_lower_95", p - 1.2)
-            up = pt.get("confidence_upper_95", p + 1.2)
+            low = pt.get("conf_interval_95_lower") or pt.get("confidence_lower_95") or (p - 1.2)
+            up = pt.get("conf_interval_95_upper") or pt.get("confidence_upper_95") or (p + 1.2)
             plot_data.append({
-                "hour": f"T+{h:02d}h",
-                "pressure": p,
+                "hour": f"T+{int(h):02d}h",
+                "pressure": round(float(p), 2),
                 "series": "SARIMAX Linepack Projection",
-                "lower": low,
-                "upper": up,
-                "critical_threshold": 78.5,
+                "lower": round(float(low), 2),
+                "upper": round(float(up), 2),
+                "critical_threshold": 76.0,
             })
     else:
         # Fallback synthetic 24h curve
@@ -56,7 +56,7 @@ def build_sarimax_vega_spec(
                 "series": "SARIMAX Linepack Projection",
                 "lower": round(p - 1.2, 2),
                 "upper": round(p + 1.2, 2),
-                "critical_threshold": 78.5,
+                "critical_threshold": 76.0,
             })
 
     spec: Dict[str, Any] = {
@@ -82,7 +82,7 @@ def build_sarimax_vega_spec(
                     "y": {
                         "field": "lower",
                         "type": "quantitative",
-                        "scale": {"zero": False, "domain": [75.0, 85.0]},
+                        "scale": {"zero": False, "domain": [70.0, 85.0]},
                     },
                     "y2": {"field": "upper"},
                 },
@@ -95,6 +95,7 @@ def build_sarimax_vega_spec(
                         "field": "pressure",
                         "type": "quantitative",
                         "title": "Pressure (kg/cm²)",
+                        "scale": {"zero": False, "domain": [70.0, 85.0]},
                     },
                     "tooltip": [
                         {"field": "hour", "title": "Time"},
@@ -107,7 +108,7 @@ def build_sarimax_vega_spec(
             {
                 "mark": {"type": "line", "strokeDash": [4, 4], "color": "#DC2626", "strokeWidth": 2},
                 "encoding": {
-                    "y": {"datum": 78.5, "title": "Min Threshold (78.5 kg/cm²)"}
+                    "y": {"datum": 76.0, "title": "Contract Floor (76.0 kg/cm²)"}
                 }
             }
         ],
